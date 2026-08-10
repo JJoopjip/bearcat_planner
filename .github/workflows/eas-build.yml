@@ -4,10 +4,13 @@ name: EAS Build (iOS)
 # this is how we build a real iOS binary without needing Node installed
 # anywhere locally. It only kicks off a build; it doesn't need Xcode
 # either, since EAS builds iOS in Expo's own cloud.
+#
+# Manual trigger only (Actions tab -> Run workflow). It needs EXPO_TOKEN
+# plus EAS-stored Apple credentials to succeed (see README) — running it
+# automatically on every push just produces a failing run until that
+# one-time setup is done.
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
     inputs:
       profile:
