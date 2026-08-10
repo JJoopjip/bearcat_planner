@@ -1,0 +1,43 @@
+name: EAS Build (iOS)
+
+# Runs entirely on GitHub's cloud runners, which already have Node.js —
+# this is how we build a real iOS binary without needing Node installed
+# anywhere locally. It only kicks off a build; it doesn't need Xcode
+# either, since EAS builds iOS in Expo's own cloud.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: "eas.json build profile to use"
+        required: true
+        default: preview
+        type: choice
+        options: [development, preview, production]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        # no package-lock.json is committed yet (it needs a real `npm install`
+        # run once, which needs Node.js — see README). Once one exists, switch
+        # this to `npm ci` for reproducible installs.
+        run: npm install
+
+      - name: Setup EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Build on EAS
+        run: eas build --platform ios --profile ${{ github.event.inputs.profile || 'preview' }} --non-interactive --no-wait

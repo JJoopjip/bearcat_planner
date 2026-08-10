@@ -1,0 +1,49 @@
+{
+  "expo": {
+    "name": "Bearcat Planner",
+    "slug": "bearcat-planner",
+    "scheme": "bearcat-planner",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/mochi/mochi-happy.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/mochi/mochi-happy.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FFF4F8"
+    },
+    "assetBundlePatterns": ["assets/mochi/*"],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.bearcatplanner.app",
+      "infoPlist": {
+        "NSHealthShareUsageDescription": "Bearcat Planner reads your steps, heart rate, workouts and sleep from Health so Mochi's corner can show them alongside your habits. Nothing leaves your device.",
+        "NSHealthUpdateUsageDescription": "Bearcat Planner does not write any data to Health."
+      },
+      "entitlements": {
+        "com.apple.developer.healthkit": true,
+        "com.apple.developer.healthkit.access": []
+      }
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-sqlite",
+        {
+          "enableFTS": false
+        }
+      ],
+      [
+        "react-native-health",
+        {
+          "isClinicalDataEnabled": false,
+          "healthSharePermission": "Bearcat Planner reads your steps, heart rate, workouts and sleep from Health so Mochi's corner can show them alongside your habits. Nothing leaves your device."
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
