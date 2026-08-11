@@ -8,44 +8,24 @@ artifact for the interaction reference; this project ports that faithfully
 to native, backed by on-device SQLite, with real Apple Health widgets
 (steps, heart rate, workouts, sleep).
 
-## One-time setup (do this once, in order)
+## Running it locally (free, no build, no account)
 
-1. **Expo account** — free, at [expo.dev](https://expo.dev).
-2. **Apple Developer Program** — $99/year, at
-   [developer.apple.com](https://developer.apple.com). Required by Apple for
-   the HealthKit entitlement and for installing a non-App-Store build on
-   your phone. There's no way around this cost for real Health data.
-3. Push this repo to GitHub (`git remote add origin <your-repo-url>` then
-   `git push -u origin main`).
-4. Create an Expo access token at
-   [expo.dev/settings/access-tokens](https://expo.dev/accounts/[your-account]/settings/access-tokens),
-   then add it to this repo as a GitHub Actions secret named `EXPO_TOKEN`
-   (repo Settings → Secrets and variables → Actions → New repository secret).
-5. Locally (on any machine with Node.js — not required to be this one),
-   run once to link the project and Apple credentials interactively:
-   ```
-   npm install -g eas-cli
-   eas login
-   eas build:configure
-   eas credentials   # walk through Apple sign-in, EAS will create the
-                      # HealthKit-enabled provisioning profile for you
-   ```
-   This step needs to happen interactively once so EAS can store your Apple
-   signing credentials — after that, GitHub Actions can build headlessly.
-6. This repo has no `package-lock.json` yet — it was scaffolded without
-   Node.js available to generate one. Step 5's `npm install` (or CI's) will
-   create it; commit it afterward so builds become reproducible (`npm ci`).
+1. Install dependencies: `npm install` (creates `package-lock.json` the
+   first time, since this repo was scaffolded without Node.js available).
+2. Start the dev server: `npx expo start`.
+3. Install the **Expo Go** app (free, App Store / Play Store) on your phone,
+   then scan the QR code from the terminal/browser to open the app.
 
-## Building
+This is entirely free and needs no Expo account, no Apple Developer
+Program, and no GitHub Actions — it's the fastest way to try the app on a
+real device.
 
-Every push to `main` triggers `.github/workflows/eas-build.yml`, which runs
-on GitHub's own Node-equipped runners and kicks off a cloud build via EAS —
-no local Node.js or Xcode needed. You can also trigger a build manually from
-the GitHub Actions tab ("Run workflow") and pick a profile.
-
-Builds land in your [Expo dashboard](https://expo.dev), where you install
-the `preview` profile straight to your phone (internal distribution, no
-TestFlight review needed) or submit `production` to the App Store.
+**Caveat:** the Apple Health widgets (steps, heart rate, workouts, sleep)
+use `react-native-health`, a native module Expo Go can't load, so that one
+screen won't work under Expo Go. Everything else runs normally. Real Health
+data requires a custom dev-client build via EAS, which needs a paid Apple
+Developer Program ($99/yr) — that's a later step, not needed to try the
+rest of the app now.
 
 ## Project layout
 
