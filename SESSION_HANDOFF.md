@@ -172,3 +172,53 @@ handoff:
   failed auto-run. Created this file, `CLAUDE.md`, `TASKS.md`, and copied
   the two reference files into `reference/` for self-containment. —
   Claude Code (chat session, no Node.js access)
+- **2026-08-13** — QA pass on Phase 3 (Habits screen), first QA this
+  project has had. Wrote `QUALITY_METRICS.md`, a general (not
+  Habits-specific) rubric covering the 7 design rules, reference
+  fidelity, code correctness, data-layer/web-demo parity, codebase
+  conventions, and handoff honesty — meant to be reused as-is for Phase
+  4/5 QA later today. **Verdict: pass, no code changes made.**
+  Checked `which node`/`npm`/`npx`/`nvm` myself first — still genuinely
+  unavailable in this sandbox, so `tsc --noEmit` could not be run for
+  real; fell back to a programmatic brace/paren/bracket balance check on
+  `app/(tabs)/habits.tsx`, `src/db/client.ts`, and `src/db/schema.ts` (all
+  balanced) plus a careful line-by-line read. Specifically verified:
+  - Decaying-streak math (`streakOf` in `habits.tsx:41-49`) hand-traced
+    against target=4, 8-week lookback, weeks 8-5 empty (0 hits, decays
+    toward 0 and stays there), weeks 4/3 met, week 2 missed, week 1 met →
+    correctly comes out to streak=2 (0,0,0,0,1,2,1,2), never negative,
+    never hard-resets on a miss. Matches `reference/bearcat_planner.jsx`
+    lines 713-721 almost verbatim.
+  - `createWebStore()`'s new `INSERT INTO habits` branch
+    (`src/db/client.ts:62-64`): confirmed the `sql.startsWith("INSERT INTO
+    habits")` match is specific enough not to collide with `"INSERT INTO
+    habit_log"` in either direction (diverges at the `s`/`_` character),
+    and does match the real literal query text used by `addHabit()`
+    (`client.ts:187-190`) — this demo-parity check is easy to get wrong by
+    pattern-matching the function name instead of the actual SQL string,
+    but it's correct here.
+  - No red anywhere, no daily-streak framing, no completion percentage, no
+    guilt-toned copy, cozy-day cap enforced in the tap handler
+    (`onCycleDay`, `habits.tsx:53-68`) and rendered in `colors.lilac`
+    (distinct token from both "done" pink and the dotted-pale miss
+    state) — confirmed against `CLAUDE.md`'s 7 rules directly, not just
+    trusted from the builder's own handoff summary.
+  - Berries amounts (habit done +3, cozy +1) match
+    `reference/claude_code_prompt.md`'s spec table exactly.
+  - Every column in the new `client.ts` queries exists in `schema.ts`'s
+    `habits`/`habit_log` tables with matching types.
+  - Colors all resolve to `src/theme/tokens.ts` constants, no hardcoded
+    hex in the new screen; file structure (SafeAreaView/ScrollView,
+    `useFocusEffect`-driven `load()`, optimistic local state after a
+    write) matches `app/(tabs)/index.tsx`'s existing conventions.
+  - The prior handoff's "unverified" claims (dotted border rendering,
+    hand-built `PanResponder` slider, `TargetSlider` not memoized) are
+    genuinely still unverified — spot-checked that these are honest
+    hedges, not boilerplate covering something actually fine.
+  No crash-level or design-rule-violating issues found, so nothing was
+  fixed. One nitpick logged in `TASKS.md` instead of blocking: the
+  `PanResponder` slider and `borderStyle: "dotted"` still need an
+  on-device check, per the existing caveat — not new information, just
+  re-flagging since it's the single highest-risk unverified piece of this
+  phase. — Claude Code (chat session, no Node.js access; verified via
+  `which node`/`npm`/`npx`/`nvm` rather than assuming)

@@ -57,6 +57,13 @@ Check items off as they're verified working, not just written — see
       swapping it in is a self-contained change inside `TargetSlider` in
       `habits.tsx`.
 - [ ] Not run — see Environment constraints, no Node.js this session.
+- [x] **QA pass done** (2026-08-13, see `SESSION_HANDOFF.md` and
+      `QUALITY_METRICS.md`) — verdict pass, no code changes needed. Logic
+      (streak decay math, web-demo parity for `addHabit`, design-rule
+      compliance) checked by hand and confirmed correct. Still worth a
+      real on-device check later: the hand-built `PanResponder`
+      `TargetSlider` and `borderStyle: "dotted"` rendering, since neither
+      has ever been visually confirmed on iOS.
 
 ## Phase 4 — Quests screen — not started
 
