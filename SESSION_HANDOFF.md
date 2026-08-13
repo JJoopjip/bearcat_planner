@@ -82,6 +82,24 @@ handoff:
 
 ## Handoff log
 
+- **2026-08-13** — Follow-up: the web deploy added 2026-08-12 failed CI
+  twice. `npx expo export -p web` needs `expo-asset` and `expo-font`
+  resolvable as *direct* node_modules entries (`@expo/metro-config`'s
+  `getAssetPlugins` and `expo-router`'s `renderStaticContent.js` both
+  `require()` them by name), even though both ship as transitive deps of
+  `expo`/other expo-* packages — npm's install doesn't guarantee they land
+  where Metro looks. Added both to `package.json` (`expo-asset ~11.0.0`,
+  `expo-font ~13.0.0`). Confirmed via the Actions API that the third run
+  succeeded and **the page is live and rendering** at
+  https://jjoopjip.github.io/bearcat_planner/ (Today screen, tab bar, all
+  visible). Diagnosed entirely from CI logs (no local Node.js) — the user
+  had to download/paste log excerpts since job logs need a GitHub token to
+  fetch via API. If static web export breaks again on a similar
+  "module cannot be found" / "Unable to resolve module" error for another
+  expo-* package, the pattern is the same: check whether
+  `@expo/metro-config` or `expo-router`'s static renderer `require()`s it
+  directly, and add it to `package.json` even though it "should" already
+  be there transitively.
 - **2026-08-12** — Added a GitHub Pages web deploy, at the user's request,
   for a public shareable demo link (like their portfolio site) — this is
   in addition to the real iOS app, not a replacement for it. Changes:
