@@ -25,6 +25,8 @@ export const moodColors = ["#CBD8EC", "#D9CDEA", "#F6E3B8", "#F9C2D6", "#F295B8"
 export const radius = { card: 22, chip: 99 };
 
 export const spendCategories = ["Food", "Transit", "Home", "Fun", "Health", "Other"] as const;
+// Income splits into these two, since income is uneven (spec, "As it happens" money entry).
+export const incomeCategories = ["Shift income", "Other income"] as const;
 
 export const scenes = [
   { id: "blossom", name: "Blossom", cost: 30 },

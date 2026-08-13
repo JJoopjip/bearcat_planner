@@ -35,6 +35,12 @@ function createWebStore(): Db {
     { id: "m4", quest_id: "q1", text: "Have 2 real conversations", done: 0, sort_order: 3 },
   ];
   const evidence: EvidenceRow[] = [];
+  // Not seeded — schema.ts's migrate() doesn't seed money/notes/reflections
+  // either, so an empty web demo here matches the real app's empty state.
+  const money: MoneyRow[] = [];
+  const sleepLog: SleepRow[] = [];
+  const notes: NoteRow[] = [];
+  const reflections = new Map<string, ReflectionRow>();
 
   return {
     async getFirstAsync<T>(sql: string, params: unknown = []): Promise<T | null> {
@@ -43,6 +49,7 @@ function createWebStore(): Db {
       if (sql.includes("FROM intentions")) return (intentions.has(p[0]) ? { text: intentions.get(p[0]) } : null) as T | null;
       if (sql.includes("FROM moods")) return (moods.has(p[0]) ? { value: moods.get(p[0]) } : null) as T | null;
       if (sql.includes("FROM wins")) return (wins.has(p[0]) ? { text: wins.get(p[0]) } : null) as T | null;
+      if (sql.includes("FROM reflections")) return (reflections.get(p[0]) ?? null) as T | null;
       if (sql.includes("SUM(minutes)")) {
         const total = sessions.filter((s) => s.kind === p[0]).reduce((sum, s) => sum + s.minutes, 0);
         return { total } as unknown as T;
@@ -63,11 +70,33 @@ function createWebStore(): Db {
       // insertion order, so it must be re-sorted here to match, otherwise a
       // reload on the web demo shows evidence oldest-first instead of newest.
       if (sql.includes("FROM evidence")) return [...evidence].sort((a, b) => (b.date > a.date ? 1 : b.date < a.date ? -1 : 0)) as unknown as T[];
+      // getAllMoods() has no ORDER BY (callers only ever group/filter it in
+      // JS), so no sort needed here to match.
+      if (sql.includes("FROM moods")) return Array.from(moods.entries()).map(([date, value]) => ({ date, value })) as unknown as T[];
+      // Real query is "ORDER BY date DESC", same reasoning as evidence above.
+      if (sql.includes("FROM money")) return [...money].sort((a, b) => (b.date > a.date ? 1 : b.date < a.date ? -1 : 0)) as unknown as T[];
+      // Real query is "ORDER BY date DESC LIMIT ?" — sort then slice to match.
+      if (sql.includes("FROM sleep_log")) {
+        const sorted = [...sleepLog].sort((a, b) => (b.date > a.date ? 1 : b.date < a.date ? -1 : 0));
+        return (p[0] != null ? sorted.slice(0, p[0]) : sorted) as unknown as T[];
+      }
+      // Real query is "ORDER BY date DESC".
+      if (sql.includes("FROM notes")) return [...notes].sort((a, b) => (b.date > a.date ? 1 : b.date < a.date ? -1 : 0)) as unknown as T[];
       return [];
     },
     async runAsync(sql: string, params: unknown = []): Promise<any> {
       const p = params as any[];
-      if (sql.startsWith("UPDATE bearcat")) bearcat.berries += p[0];
+      // NB: "UPDATE bearcat" alone used to be the match here, which would have
+      // silently swallowed the more specific bearcat updates added below
+      // (scene purchases/equips) since if/else-if checks top to bottom and
+      // this was first. Narrowed to the literal berries-delta query it's
+      // actually meant for.
+      if (sql.startsWith("UPDATE bearcat SET berries = berries + ?")) bearcat.berries += p[0];
+      else if (sql.startsWith("UPDATE bearcat SET berries = berries - ?")) {
+        bearcat.berries -= p[0];
+        bearcat.owned_scenes = p[1];
+        bearcat.scene = p[2];
+      } else if (sql.startsWith("UPDATE bearcat SET scene = ?")) bearcat.scene = p[0];
       else if (sql.startsWith("INSERT INTO intentions")) intentions.set(p[0], p[1]);
       else if (sql.startsWith("INSERT INTO moods")) moods.set(p[0], p[1]);
       else if (sql.startsWith("INSERT INTO wins")) wins.set(p[0], p[1]);
@@ -115,8 +144,23 @@ function createWebStore(): Db {
       } else if (sql.startsWith("INSERT INTO evidence")) {
         const [id, questId, date, text] = p;
         evidence.push({ id, quest_id: questId, date, text });
+      } else if (sql.startsWith("INSERT INTO money")) {
+        const [id, date, amount, dir, category] = p;
+        money.push({ id, date, amount, dir, category });
+      } else if (sql.startsWith("INSERT INTO sleep_log")) {
+        const [id, date, hours, quality] = p;
+        sleepLog.push({ id, date, hours, quality });
+      } else if (sql.startsWith("INSERT INTO notes")) {
+        const [id, date, text] = p;
+        notes.push({ id, date, text });
+      } else if (sql.startsWith("INSERT INTO reflections")) {
+        const [weekKey, proud, learned, next] = p;
+        reflections.set(weekKey, { week_key: weekKey, proud, learned, next });
       }
-      // workouts / sleep_log inserts: no-op — nothing in this file reads them back yet
+      // workouts inserts: still a no-op — nothing in this file reads workouts
+      // back yet (the Me screen's Health widget is a separate HealthKit read,
+      // not this table); addWorkout()'s berries grant still works since it's
+      // a separate runAsync call to the (now-specific) bearcat berries branch.
       return undefined as any;
     },
   };
@@ -150,6 +194,11 @@ export type PriorityRow = { id: string; date: string; text: string; done: number
 export type QuestRow = { id: string; name: string; intention: string; pinned: number; resting: number; moves: number };
 export type MilestoneRow = { id: string; quest_id: string; text: string; done: number; sort_order: number };
 export type EvidenceRow = { id: string; quest_id: string; date: string; text: string };
+export type MoneyRow = { id: string; date: string; amount: number; dir: "in" | "out"; category: string };
+export type MoodRow = { date: string; value: number };
+export type SleepRow = { id: string; date: string; hours: number; quality: "rough" | "okay" | "good" };
+export type NoteRow = { id: string; date: string; text: string };
+export type ReflectionRow = { week_key: string; proud: string; learned: string; next: string };
 
 export async function getBearcat(): Promise<BearcatRow> {
   const db = await getDb();
@@ -246,11 +295,25 @@ export async function setHabitLog(habitId: string, date: string, status: "done" 
   }
 }
 
+// Berries live inside these two functions rather than at each call site —
+// there wasn't a call site at all yet (Phase 2's "as it happens" quick-log
+// row, which is where the spec's TimerSheet/WorkoutSheet berries() calls
+// live in the reference, hasn't been built). Wiring it here means whichever
+// screen calls addWorkout/addSession next (the eventual quick-log sheets,
+// or Me's manual entries) gets the berries grant for free, matching the
+// spec's table (workout +5, focus/meditation session +5) without every
+// future caller needing to remember it.
 export async function addWorkout(id: string, date: string, type: string, minutes: number): Promise<void> {
   const db = await getDb();
   await db.runAsync("INSERT INTO workouts (id, date, type, minutes) VALUES (?, ?, ?, ?)", [id, date, type, minutes]);
+  await addBerries(5);
 }
 
+// Sleep log intentionally does NOT grant berries — the spec's berries table
+// (reference/claude_code_prompt.md, "Berries and scenes") lists habit/cozy/
+// mood/win/focus-or-meditation/workout/milestone only; a manual sleep entry
+// isn't on it, in either the spec or the reference prototype (which has no
+// sleep-log UI at all, only a HealthKit-style paste import for workouts).
 export async function addSleep(id: string, date: string, hours: number, quality: "rough" | "okay" | "good"): Promise<void> {
   const db = await getDb();
   await db.runAsync("INSERT INTO sleep_log (id, date, hours, quality) VALUES (?, ?, ?, ?)", [id, date, hours, quality]);
@@ -259,6 +322,12 @@ export async function addSleep(id: string, date: string, hours: number, quality:
 export async function addSession(id: string, date: string, kind: "focus" | "meditate", minutes: number, tag: string | null): Promise<void> {
   const db = await getDb();
   await db.runAsync("INSERT INTO sessions (id, date, kind, minutes, tag) VALUES (?, ?, ?, ?, ?)", [id, date, kind, minutes, tag]);
+  await addBerries(5);
+}
+
+export async function getRecentSleep(limit: number): Promise<SleepRow[]> {
+  const db = await getDb();
+  return db.getAllAsync<SleepRow>("SELECT * FROM sleep_log ORDER BY date DESC LIMIT ?", [limit]);
 }
 
 export async function getMinutesByKind(kind: "focus" | "meditate"): Promise<number> {
@@ -325,4 +394,79 @@ export async function getAllEvidence(): Promise<EvidenceRow[]> {
 export async function addEvidence(id: string, questId: string, date: string, text: string): Promise<void> {
   const db = await getDb();
   await db.runAsync("INSERT INTO evidence (id, quest_id, date, text) VALUES (?, ?, ?, ?)", [id, questId, date, text]);
+}
+
+// ---- Money ----
+
+export async function getAllMoney(): Promise<MoneyRow[]> {
+  const db = await getDb();
+  return db.getAllAsync<MoneyRow>("SELECT * FROM money ORDER BY date DESC");
+}
+
+export async function addMoney(id: string, date: string, amount: number, dir: "in" | "out", category: string): Promise<void> {
+  const db = await getDb();
+  await db.runAsync("INSERT INTO money (id, date, amount, dir, category) VALUES (?, ?, ?, ?, ?)", [id, date, amount, dir, category]);
+}
+
+// ---- Moods (full range, for the year-in-pixels grid and the money screen's
+// low-mood-vs-good-day insight — getMood/setMood above only ever handle a
+// single date) ----
+
+export async function getAllMoods(): Promise<MoodRow[]> {
+  const db = await getDb();
+  return db.getAllAsync<MoodRow>("SELECT * FROM moods");
+}
+
+// ---- Notes journal ----
+
+export async function getNotes(): Promise<NoteRow[]> {
+  const db = await getDb();
+  return db.getAllAsync<NoteRow>("SELECT * FROM notes ORDER BY date DESC");
+}
+
+export async function addNote(id: string, date: string, text: string): Promise<void> {
+  const db = await getDb();
+  await db.runAsync("INSERT INTO notes (id, date, text) VALUES (?, ?, ?)", [id, date, text]);
+}
+
+// ---- Sunday reflection ----
+// Whole-row upsert (not a per-field one like setIntention/setMood/setWin)
+// because the screen reads the current week's row, merges the edited field
+// in JS, then writes all three back — the same shape as the reference
+// prototype's setRefl, and it avoids interpolating a column name into SQL.
+
+export async function getReflection(weekKey: string): Promise<ReflectionRow> {
+  const db = await getDb();
+  const row = await db.getFirstAsync<ReflectionRow>("SELECT * FROM reflections WHERE week_key = ?", [weekKey]);
+  return row ?? { week_key: weekKey, proud: "", learned: "", next: "" };
+}
+
+export async function setReflection(weekKey: string, proud: string, learned: string, next: string): Promise<void> {
+  const db = await getDb();
+  await db.runAsync(
+    `INSERT INTO reflections (week_key, proud, learned, next) VALUES (?, ?, ?, ?)
+     ON CONFLICT(week_key) DO UPDATE SET proud = excluded.proud, learned = excluded.learned, next = excluded.next`,
+    [weekKey, proud, learned, next]
+  );
+}
+
+// ---- Mochi's scene shop ----
+
+export async function buyScene(id: string, cost: number): Promise<boolean> {
+  const db = await getDb();
+  const bc = await getBearcat();
+  if (bc.berries < cost) return false;
+  const owned: string[] = JSON.parse(bc.owned_scenes || "[]");
+  if (!owned.includes(id)) owned.push(id);
+  await db.runAsync(
+    "UPDATE bearcat SET berries = berries - ?, owned_scenes = ?, scene = ? WHERE id = 1",
+    [cost, JSON.stringify(owned), id]
+  );
+  return true;
+}
+
+// Equip/unequip a scene already owned (id === null clears the backdrop).
+export async function setScene(id: string | null): Promise<void> {
+  const db = await getDb();
+  await db.runAsync("UPDATE bearcat SET scene = ? WHERE id = 1", [id]);
 }

@@ -147,23 +147,73 @@ Check items off as they're verified working, not just written — see
       "on" the node) still needs an on-device look, per the builder's own
       caveat.
 
-## Phase 5 — Money and Me screens — Me partially done
+## Phase 5 — Money and Me screens — done (unverified, no Node in this session)
 
 - [x] Me: Health widgets (steps, heart rate, exercise, sleep) via
       HealthKit, "Time you've given yourself" focus/breathing minutes
-- [ ] Me is missing, vs. the web demo: year-in-pixels mood grid, the
-      manual Sleep card (7-night average from `sleep_log`, distinct from
-      the Health widget's live HealthKit reading — the app supports both a
-      manual log and an automatic HealthKit source), Notes journal card,
-      Sunday reflection, Mochi's scene shop (spend berries on backdrops)
-- [ ] Money screen (`app/(tabs)/money.tsx`) is a placeholder. Needs: period
-      selector, in/out/kept totals, category bars, the
-      low-mood-vs-good-day spend insight
-- [ ] Berries economy isn't wired up for most actions yet — `addBerries`
-      exists and Today's mood/win/habit actions call it, but quest
-      milestones, workouts, sleep logs, and focus/meditation sessions
-      don't grant berries natively yet (the web demo's berries table is
-      the reference for exact amounts)
+- [x] Me: year-in-pixels mood grid (53 columns × 7 rows, column-major like
+      the reference's CSS grid, built with plain `View`s since RN has no
+      CSS grid — reads `getAllMoods()`, colors each day with
+      `moodColors[value-1]`, 25% opacity for the padding days outside the
+      current year, same legend row as the reference)
+- [x] Me: manual Sleep card — 7-night average from `sleep_log` via the new
+      `getRecentSleep(7)`, log form (hours + rough/okay/good quality chips)
+      calling `addSleep`. Deliberately does **not** grant berries — the
+      spec's berries table has no "sleep log" line item and the reference
+      prototype has no sleep-log UI at all, so this isn't a gap, it's the
+      table being followed literally.
+- [x] Me: Notes journal card (`getNotes`/`addNote`, newest first, invite-toned
+      empty state)
+- [x] Me: Sunday reflection (`getReflection`/`setReflection`, three
+      blur-to-save prompts, keyed to `dkey(startOfWeek())` same as the
+      reference's `wk`)
+- [x] Me: Mochi's scene shop (`buyScene`/`setScene` — tapping an unowned
+      scene buys it (deducts berries, marks owned, equips it), tapping an
+      owned scene toggles it on/off; scene backdrops themselves were
+      already built in `Mochi.tsx` in an earlier phase, only the
+      buy/equip DB functions and shop UI were missing)
+- [x] Money screen (`app/(tabs)/money.tsx`) built: period selector
+      (month/quarter/half/year, plain segmented control, no new deps),
+      in/out/kept totals, category bars (`View`/`StyleSheet`, same
+      substitution pattern as Habits' slider and Quests' path — no chart
+      library), an entry form (amount, in/out toggle, category chips —
+      income categories are "Shift income"/"Other income" per the spec's
+      income-splitting note, spend categories are the existing
+      `tokens.ts` list), and the low-mood-vs-good-day spend insight
+      framed as observation ("Worth noticing" / "Nicely steady", never a
+      grade or a warning color).
+- [x] Berries economy: quest milestones were already wired (Phase 4).
+      Workout (+5) and focus/meditation session (+5) grants are now
+      **inside** `addWorkout()`/`addSession()` in `client.ts` itself,
+      rather than at a call site — there wasn't a call site yet (Phase
+      2's "as it happens" quick-log row still isn't built), so embedding
+      the berries grant in the DB function means whichever screen calls
+      it next gets the grant automatically. Sleep logs deliberately do
+      not grant berries (see above — not in the spec's table).
+- [x] `client.ts` gained: `getAllMoney`/`addMoney`, `getAllMoods` (full
+      range, for the year-in-pixels grid and the money insight —
+      `getMood`/`setMood` only ever handled one date), `getRecentSleep`,
+      `getNotes`/`addNote`, `getReflection`/`setReflection` (whole-row
+      upsert, not per-field, to avoid interpolating a column name into
+      SQL), `buyScene`/`setScene` — plus matching `createWebStore()`
+      branches for every one of those, all seeded empty to match
+      `schema.ts`'s `migrate()` (which doesn't seed money/notes/
+      reflections either).
+- [x] **Bug fixed while adding the scene-shop web-store branches**: the
+      web store's `runAsync` had a bare `sql.startsWith("UPDATE bearcat")`
+      check as its very first condition, matching *any* future
+      `UPDATE bearcat...` query, not just the berries-delta one it was
+      written for. Adding `buyScene`/`setScene`'s own `UPDATE bearcat...`
+      queries would have silently fallen into the berries-delta branch
+      and misinterpreted their params. Narrowed it to
+      `"UPDATE bearcat SET berries = berries + ?"` before adding the two
+      new, more specific branches.
+- [ ] Not run — see Environment constraints, no Node.js this session
+      either. `tsc --noEmit` could not be executed; balanced-braces check
+      done programmatically instead (all of `money.tsx`, `me.tsx`,
+      `client.ts`, `tokens.ts` came out even).
+- [ ] Not yet done: a QA pass against `QUALITY_METRICS.md` (this was the
+      build session).
 
 ## Phase 6 — Notifications — not started
 

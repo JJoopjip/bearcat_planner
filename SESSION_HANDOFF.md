@@ -1,21 +1,25 @@
 # SESSION_HANDOFF.md
 
-**Last updated:** 2026-08-13, by a Claude Code session doing QA on Phase 4
+**Last updated:** 2026-08-13, by a Claude Code session that built Phase 5
 (chat-based, no Node.js available in its environment — see "Environment
 constraints" below). Read `CLAUDE.md` first if you haven't; it explains
 the hygiene rule that keeps this file current.
 
 ## tl;dr for the next agent
 
-Phase 1, Phase 3 (Habits), and Phase 4 (Quests) are done. Phase 2 (Today
-screen) is **half** done — the daily core works, but the "as it happens"
-quick-log row (focus timer, meditation+sleep log, workout log, money
-entry, brain-dump inbox) doesn't exist yet, even though the spec calls it
-out as part of Phase 2. Phase 5 (Money, remaining Me cards) is still not
-started. Nothing in this repo has ever been run — see "Environment
-constraints" below — so **actually running the project for the first
-time** remains the single highest-value next task regardless of which
-feature phase is picked up next. Full detail in `TASKS.md`.
+**This was the last of the three requested phases (3, 4, 5).** Phase 1,
+Phase 3 (Habits), Phase 4 (Quests), and now Phase 5 (Money + remaining Me
+cards) are all built. Phase 2 (Today screen) is still **half** done — the
+daily core works, but the "as it happens" quick-log row (focus timer,
+meditation+sleep log, workout log, money entry, brain-dump inbox) doesn't
+exist yet, even though the spec calls it out as part of Phase 2; Money
+entries and manual sleep logs can currently only be added from their own
+full screens (Money, Me), not from a quick-log sheet on Today. Nothing in
+this repo has ever been run on Node.js in any session that's touched it —
+see "Environment constraints" below — so **actually running the project
+for the first time, on a real machine with Node/Xcode**, is now the
+single highest-value next step, more than any remaining feature work.
+Full detail in `TASKS.md`.
 
 ## What's been done, and how sure we are it works
 
@@ -27,7 +31,9 @@ feature phase is picked up next. Full detail in `TASKS.md`.
 | Me: Apple Health widgets (steps/HR/exercise/sleep) | Written | Not run, and can only ever be tested on a real device with a paid Apple account (see README) |
 | Habits screen (Phase 3) | Written, persists to SQLite (and to the web demo's in-memory store) | Not run |
 | Quests screen (Phase 4) | Written, QA'd (pass with notes), persists to SQLite (and to the web demo's in-memory store) | Not run |
-| Money screen | Placeholder only | N/A |
+| Money screen (Phase 5) | Written, persists to SQLite (and web demo store) | Not run |
+| Me screen's remaining cards (Phase 5) | Written: year-in-pixels, manual Sleep, Notes, Sunday reflection, scene shop | Not run |
+| Berries economy | Fully wired: habit/cozy/mood/win (earlier phases) + quest milestone +25 (Phase 4) + workout/focus/meditation +5 (Phase 5, embedded in `client.ts`'s `addWorkout`/`addSession`) | Not run |
 | GitHub Actions EAS build workflow | Written, manual-trigger-only | Failed on first run — expected, since `EXPO_TOKEN` + Apple credentials aren't set up yet |
 
 **"Written" does not mean "verified."** No session so far has had access to
@@ -74,23 +80,166 @@ inherits its unverified-ness.
 
 ## What's next
 
-See `TASKS.md` for the full backlog. In priority order, as of this
-handoff:
+All three requested feature phases (3, 4, 5) are now built. See
+`TASKS.md` for the full backlog, but in priority order as of this
+handoff, this is now genuinely cross-cutting work, not another feature
+phase:
 
-1. Get the project actually running once (Node.js/Codespaces), fix
-   whatever `tsc`/`expo start` surface — this now includes checking the
-   Habits screen's hand-built `PanResponder` slider **and** the new
-   Quests screen's hand-built `QuestPath` (View-based winding path, no
-   SVG) actually look/behave right on a real touch device/simulator,
-   since those are the newest never-run pieces
-2. Build Phase 5: Money screen + finish Me screen's remaining cards. Phase
-   4 QA is done (pass with notes, see Handoff log) — Phase 5 is clear to
-   proceed.
+1. **Get the project actually running, for the first time ever, on a real
+   Node.js machine (GitHub Codespaces is the known-free option) or a Mac
+   with Xcode for the iOS side.** Every phase so far — 1 through 5 — has
+   been written by hand without `npm install`/`tsc --noEmit`/`expo start`
+   ever running against this code once. That includes today's Phase 5
+   work: `getRecentSleep`'s `LIMIT ?` parameter, the `ON CONFLICT` upsert
+   in `setReflection`, and the whole year-in-pixels grid's column/row
+   math are exactly the kind of thing that looks right by eye but needs
+   a real `tsc` pass and a real render to be sure of. Run `tsc --noEmit`
+   first (fast, catches typos/type mismatches) before spending time on
+   the device/simulator step.
+2. On-device/simulator specifically, check: the Habits screen's
+   `PanResponder` slider, Quests' `QuestPath` (View-based winding path),
+   and now Phase 5's year-in-pixels grid (53 `View` columns of 7 cells
+   each, meant to read as a dense grid — untested whether the cells end
+   up too small/cramped on an actual phone width) and the scene shop's
+   circular backdrops behind Mochi (built in an earlier phase, but never
+   actually seen rendered until now that the shop UI to trigger them
+   exists).
 3. Build the Today screen's "as it happens" quick-log row + bottom sheets
-   (finishes Phase 2)
+   (finishes Phase 2). Money entries and manual sleep logs currently only
+   have a home on their own full screens (Money, Me) — the spec's
+   original intent was quick one-tap sheets from Today too. Once that
+   row exists, `addWorkout`/`addSession`'s embedded berries grants
+   (added this session) will start firing without any further wiring.
+4. A QA pass against `QUALITY_METRICS.md` for Phase 5 hasn't happened yet
+   (this was the build session) — same rubric used for Phases 3/4, reuse
+   as-is.
 
 ## Handoff log
 
+- **2026-08-13** — Built Phase 5: the Money screen and the rest of the Me
+  screen, the last of the three requested phases. No Node.js in this
+  sandbox either (checked `which node`/`npm`/`npx`/`nvm` myself, all
+  absent) — same caveat as every prior session, code written by hand and
+  checked programmatically for balanced braces/parens/brackets, not
+  compiled.
+  **Money** (`app/(tabs)/money.tsx`, replacing the placeholder): period
+  selector (month/quarter/half/year, a hand-built segmented control, no
+  new deps), in/out/kept totals, category bars (`View`/`StyleSheet`
+  width-percentage fills, same no-chart-library substitution pattern as
+  Habits' slider and Quests' path), an entry form (amount, in/out toggle,
+  category chips — spend categories from the existing `tokens.ts` list,
+  income categories are the new `"Shift income"`/`"Other income"` per the
+  spec's income-splitting note), and the low-mood-vs-good-day spend
+  insight ported from the reference's `spendOn()` almost verbatim
+  (average out-spend on days where that day's mood value is ≤2 vs ≥4,
+  using the app's own `moodPoses` scale). Framed as an observation, not a
+  judgment: "On low-mood days you spend about $X. On good days, $Y.
+  Worth noticing." / "...Nicely steady." — matching the reference's exact
+  wording, no warning color, no red, no "you're overspending" framing.
+  **Me** (`app/(tabs)/me.tsx`): added the year-in-pixels mood grid (53
+  columns × 7 rows, column-major to mirror the reference's CSS
+  `grid-auto-flow: column`, built with plain `View`s since RN has no CSS
+  grid — each cell colored by `moodColors[value-1]` via the new
+  `getAllMoods()`, padding days outside the current year at 25% opacity,
+  same swatch legend row as the reference), a manual Sleep card
+  (7-night average via the new `getRecentSleep(7)`, a log form with
+  rough/okay/good quality chips, distinct from the existing HealthKit
+  sleep widget above it), a Notes journal card (`getNotes`/`addNote`,
+  newest first, invite-toned empty state), a Sunday reflection card
+  (`getReflection`/`setReflection`, three blur-to-save prompts keyed to
+  `dkey(startOfWeek())`), and Mochi's scene shop (`buyScene`/`setScene` —
+  tapping an unowned scene buys and equips it if there are enough
+  berries, tapping an owned one toggles it on/off; the actual backdrop
+  rendering behind Mochi already existed in `Mochi.tsx`/`mood.ts` from an
+  earlier phase, only the buy/equip data layer and shop UI were
+  missing). The shop card's Mochi pose/stage now come from the same
+  `moodForToday`/`stageFromMilestones` logic Today uses (mood, win,
+  priorities, habit log, week score — all daily-core inputs only, per
+  design rule 5), computed fresh in `me.tsx`'s own `load()` rather than
+  shared global state, matching how each screen in this codebase already
+  independently loads its own data.
+  **`client.ts` additions**: `getAllMoney`/`addMoney`, `getAllMoods`
+  (full range — `getMood`/`setMood` only ever handled one date at a
+  time), `getRecentSleep`, `getNotes`/`addNote`,
+  `getReflection`/`setReflection` (a whole-row upsert rather than a
+  per-field one, to avoid interpolating a column name into raw SQL — the
+  screen reads the current week's row, merges the edited field in JS on
+  blur, writes all three back, same shape as the reference prototype's
+  own `setRefl`), `buyScene`/`setScene`. Every one of these got a
+  matching `createWebStore()` branch, seeded empty to match
+  `schema.ts`'s `migrate()` (money/notes/reflections aren't seeded there
+  either, so empty is correct, not an oversight).
+  **Berries economy**: quest milestones were already wired in Phase 4.
+  This session embedded the workout (+5) and focus/meditation-session
+  (+5) grants **inside** `addWorkout()`/`addSession()` in `client.ts`
+  itself, rather than at a UI call site — there wasn't a UI call site to
+  wire it into yet, since Phase 2's "as it happens" quick-log row (the
+  spec's actual home for logging a workout or starting a focus timer)
+  still isn't built. Embedding the grant in the DB function means
+  whichever screen calls it next — the eventual quick-log sheets, most
+  likely — gets the berries grant automatically, without every future
+  caller needing to remember to also call `addBerries`. Manual sleep log
+  entries (the new Me card) deliberately do **not** grant berries: the
+  spec's berries table (`reference/claude_code_prompt.md`, "Berries and
+  scenes") lists habit/cozy/mood/win/focus-or-meditation/workout/
+  milestone only, and the reference prototype has no sleep-log UI at all
+  (only a HealthKit-style paste-import for workouts) — so this is
+  following the table literally, not a gap.
+  **Bug fixed while wiring the scene shop into the web store**: the web
+  store's `runAsync` had `if (sql.startsWith("UPDATE bearcat")) bearcat
+  .berries += p[0];` as its very first condition — a bare prefix match
+  on the table name, not the actual query, that would have silently
+  swallowed *any* future `UPDATE bearcat...` statement into the
+  berries-delta branch. `buyScene`/`setScene` both needed their own
+  `UPDATE bearcat...` queries (deduct berries + set owned_scenes + set
+  scene; set scene alone), which would have hit that overly broad check
+  first and misread their params as a berries delta. Narrowed the
+  original check to its actual literal query text
+  (`"UPDATE bearcat SET berries = berries + ?"`) before adding the two
+  new, more specific branches after it — same class of bug as the
+  evidence-ordering one the Phase 4 QA pass found, caught this time
+  during the build rather than a separate QA pass.
+  **Design rules, checked against `CLAUDE.md` directly**: no red
+  anywhere (`grep -ni "red|error|danger|warning"` across both new/changed
+  screen files came back clean, one false positive on the substring
+  "red" inside "Entered"); no completion percentage displayed as a grade
+  (the only `%` usage is bar-fill `width` styling, same non-displayed
+  pattern already used for the Today ring and Quests path); Mochi's pose
+  on the Me screen's shop card is derived only from daily-core signals
+  (mood/win/priorities/habits/week-score), never from money, sleep, or
+  notes — money/sleep/notes/reflections are optional modules and must
+  not (and don't) feed the mascot's pose, per design rule 5; Money's
+  Mochi (header, `"drink"` pose) is fixed, not performance-derived;
+  empty states invite (bars: "Log something below and it appears here.",
+  notes: "Nothing here yet. Jot down a thought whenever one shows up.").
+  One pre-existing, not-newly-introduced nitpick worth flagging: the
+  `"#5FB595"` hex used for the Money screen's "In" stat color (and the
+  Me screen's pre-existing "Exercise today" stat) isn't a `tokens.ts`
+  constant — it's a darker text-legible variant of the pale `mint`
+  token, matching the reference CSS's own `.bc-stat.mint{color:#5FB595}`
+  (a deliberately different, more readable shade than the pale
+  background token). This convention already existed in `me.tsx` before
+  this session; I reused it for consistency in `money.tsx` rather than
+  inventing a third way to color a stat number, but it's still a
+  hardcoded hex outside `tokens.ts`, worth promoting to a token
+  (`colors.mintDeep` or similar) in a later pass rather than fixing
+  ad hoc mid-phase.
+  Verified by hand (no Node.js — see Environment constraints): every new
+  `client.ts` query's columns against `schema.ts`'s `money`/`sleep_log`/
+  `notes`/`reflections` tables (all match); every new `createWebStore()`
+  `runAsync`/`getAllAsync` branch's literal SQL prefix checked against
+  the real query text side by side, specifically re-verifying the
+  now-narrowed bearcat branches don't collide with each other or with
+  quest-related `UPDATE`s; balanced braces/parens/brackets confirmed
+  programmatically for `money.tsx`, `me.tsx`, `client.ts`, `tokens.ts`.
+  Not verified: the actual on-screen look of the year-in-pixels grid
+  (whether 53 columns of 7 tiny squares each stay legible at real phone
+  widths), the scene backdrops behind Mochi (first time the shop UI that
+  triggers them exists, though the backdrop rendering itself predates
+  this session), and general layout/scroll behavior of both screens —
+  all flagged in "What's next" above rather than blocking on them, per
+  the standing instruction that this is a "verify on device" gap, not a
+  correctness bug.
 - **2026-08-13** — QA pass on Phase 4 (Quests screen), applying the
   existing `QUALITY_METRICS.md` rubric as-is (not rewritten). **Verdict:
   pass with notes — one bug found and fixed, everything else clean.**
