@@ -119,6 +119,33 @@ Check items off as they're verified working, not just written — see
 - [ ] Not run — see Environment constraints, no Node.js this session.
       `tsc --noEmit` could not be executed; balanced-braces check done
       programmatically instead (see handoff).
+- [x] **QA pass done** (2026-08-13, see `SESSION_HANDOFF.md` and
+      `QUALITY_METRICS.md`) — verdict pass with notes. One real bug found
+      and fixed: `createWebStore()`'s `getAllAsync` branch for
+      `FROM evidence` (`src/db/client.ts`) returned the in-memory array in
+      raw push/insertion order, but the real query is
+      `ORDER BY date DESC` — on the GitHub Pages demo, reloading/
+      revisiting the Quests tab would show evidence oldest-first instead
+      of newest-first. Fixed by sorting the array by `date` descending
+      before returning it, matching the real SQL. Everything else
+      checked out: no design-rule violations, all `client.ts`
+      quests/milestones/evidence columns match `schema.ts` exactly, every
+      other `createWebStore()` branch's `sql.startsWith(...)` prefix is
+      specific enough not to collide with a sibling `UPDATE quests SET
+      ...` statement, seed data for the web demo matches `migrate()`'s
+      seed (same "q1" quest + 4 milestones), berries amounts (milestone
+      +25, evidence +3) match the spec table and the reference's literal
+      calls, and the hand-built `QuestPath` sine-curve/furthest-milestone
+      logic is a faithful (if not pixel-identical) port — it also quietly
+      fixes a latent crash in `reference/bearcat_planner.jsx`'s own
+      `QuestPath` (accessing `here.x`/`here.y` on an `undefined` `here`
+      when a quest has zero milestones, since `[...pts].reverse().find()
+      || pts[0]` is `undefined` when `pts` is empty) by rendering an
+      empty-path invite state instead when `milestones.length === 0`.
+      Not newly verified (no Node.js this session, same as always): the
+      `QuestPath` visual layout (spacing, whether Mochi sits convincingly
+      "on" the node) still needs an on-device look, per the builder's own
+      caveat.
 
 ## Phase 5 — Money and Me screens — Me partially done
 

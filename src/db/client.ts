@@ -59,7 +59,10 @@ function createWebStore(): Db {
       }
       if (sql.includes("FROM quests")) return quests as unknown as T[];
       if (sql.includes("FROM milestones")) return milestones as unknown as T[];
-      if (sql.includes("FROM evidence")) return evidence as unknown as T[];
+      // Real query is "ORDER BY date DESC" — the array is push-appended in
+      // insertion order, so it must be re-sorted here to match, otherwise a
+      // reload on the web demo shows evidence oldest-first instead of newest.
+      if (sql.includes("FROM evidence")) return [...evidence].sort((a, b) => (b.date > a.date ? 1 : b.date < a.date ? -1 : 0)) as unknown as T[];
       return [];
     },
     async runAsync(sql: string, params: unknown = []): Promise<any> {

@@ -1,9 +1,9 @@
 # SESSION_HANDOFF.md
 
-**Last updated:** 2026-08-13, by a Claude Code session (chat-based, no
-Node.js available in its environment — see "Environment constraints"
-below). Read `CLAUDE.md` first if you haven't; it explains the hygiene
-rule that keeps this file current.
+**Last updated:** 2026-08-13, by a Claude Code session doing QA on Phase 4
+(chat-based, no Node.js available in its environment — see "Environment
+constraints" below). Read `CLAUDE.md` first if you haven't; it explains
+the hygiene rule that keeps this file current.
 
 ## tl;dr for the next agent
 
@@ -26,7 +26,7 @@ feature phase is picked up next. Full detail in `TASKS.md`.
 | Today: intention, mood, priorities, habits, one small win | Written, persists to SQLite | Not run |
 | Me: Apple Health widgets (steps/HR/exercise/sleep) | Written | Not run, and can only ever be tested on a real device with a paid Apple account (see README) |
 | Habits screen (Phase 3) | Written, persists to SQLite (and to the web demo's in-memory store) | Not run |
-| Quests screen (Phase 4) | Written, persists to SQLite (and to the web demo's in-memory store) | Not run |
+| Quests screen (Phase 4) | Written, QA'd (pass with notes), persists to SQLite (and to the web demo's in-memory store) | Not run |
 | Money screen | Placeholder only | N/A |
 | GitHub Actions EAS build workflow | Written, manual-trigger-only | Failed on first run — expected, since `EXPO_TOKEN` + Apple credentials aren't set up yet |
 
@@ -83,14 +83,122 @@ handoff:
    Quests screen's hand-built `QuestPath` (View-based winding path, no
    SVG) actually look/behave right on a real touch device/simulator,
    since those are the newest never-run pieces
-2. Build the Today screen's "as it happens" quick-log row + bottom sheets
+2. Build Phase 5: Money screen + finish Me screen's remaining cards. Phase
+   4 QA is done (pass with notes, see Handoff log) — Phase 5 is clear to
+   proceed.
+3. Build the Today screen's "as it happens" quick-log row + bottom sheets
    (finishes Phase 2)
-3. Port Money screen + finish Me screen's remaining cards (Phase 5)
-4. QA pass on Phase 4 (Quests) against `QUALITY_METRICS.md`, same as was
-   done for Phase 3
 
 ## Handoff log
 
+- **2026-08-13** — QA pass on Phase 4 (Quests screen), applying the
+  existing `QUALITY_METRICS.md` rubric as-is (not rewritten). **Verdict:
+  pass with notes — one bug found and fixed, everything else clean.**
+  Checked `which node`/`npm`/`npx`/`nvm` myself first (per the rubric's
+  explicit instruction not to assume) — still genuinely unavailable in
+  this sandbox, so `tsc --noEmit` could not be run for real; fell back to
+  a programmatic brace/paren/bracket balance check on
+  `app/(tabs)/quests.tsx` and `src/db/client.ts` (both balanced, matching
+  counts for `()`, `{}`, `[]`) plus a full line-by-line read against the
+  reference (`reference/bearcat_planner.jsx` lines 826-1042) and the spec
+  (`reference/claude_code_prompt.md`).
+  **Bug found and fixed**: `src/db/client.ts`'s `createWebStore()` —
+  `getAllAsync`'s `if (sql.includes("FROM evidence"))` branch returned
+  the in-memory `evidence` array in raw insertion order, but the real
+  query (`getAllEvidence` in `client.ts`) is `SELECT * FROM evidence
+  ORDER BY date DESC`. On the GitHub Pages web demo this meant a page
+  reload or revisiting the Quests tab (triggering `useFocusEffect`'s
+  `load()`) would silently show evidence oldest-first instead of
+  newest-first — not a crash, but a real behavioral mismatch from the
+  real app, and the kind of thing the rubric's web-demo-parity section
+  specifically warns is "easy to miss because nothing crashes." Fixed by
+  sorting a copy of the array by `date` descending before returning it,
+  matching the real SQL (`src/db/client.ts`, the `FROM evidence` branch
+  inside `createWebStore`).
+  Everything else checked out clean:
+  - **Data-layer correctness**: every column in the new `client.ts`
+    `getQuests`/`addQuest`/`pinQuest`/`setQuestResting`/
+    `setQuestIntention`/`adjustQuestMoves`/`getAllMilestones`/
+    `addMilestone`/`setMilestoneDone`/`getAllEvidence`/`addEvidence`
+    queries matches `schema.ts`'s `quests`/`milestones`/`evidence`
+    `CREATE TABLE` columns and types exactly (`pinned`/`resting`/`done`
+    all `INTEGER`, coerced 0/1 the same way `habit_log.status` already
+    is).
+  - **Web-store branch collisions**: checked every new
+    `createWebStore()` `runAsync` `sql.startsWith(...)` prefix against
+    the literal SQL string in the corresponding `client.ts` function,
+    side by side, in both directions. `"UPDATE quests SET pinned = 0"`
+    (unpin-all, no params) vs. `"UPDATE quests SET pinned = 1 WHERE id =
+    ?"` (pin-one) vs. `"...SET resting = ..."` / `"...SET intention =
+    ..."` / `"...SET moves = moves + ..."` all share the `"UPDATE quests
+    SET "` prefix but diverge immediately after — none swallows another,
+    confirmed by reading the actual strings, not just the function
+    names. Same check for `"INSERT INTO quests"` vs. `"INSERT INTO
+    milestones"` vs. `"INSERT INTO evidence"` — no collision.
+  - **Web demo seed data**: `createWebStore()`'s in-memory `quests`/
+    `milestones` arrays (client.ts) are seeded with the same "q1" quest
+    ("Find a role I'm excited about") and its 4 milestones that
+    `schema.ts`'s `migrate()` seeds for the real SQLite database — the
+    public demo won't be empty on first load.
+  - **Berries**: milestone-done +25, evidence-added +3 — both match
+    `reference/claude_code_prompt.md`'s berries table ("quest milestone
+    +25") and the reference prototype's literal `berries(25,
+    "milestone!")` / `berries(3, "evidence")` calls (note the spec table
+    itself doesn't list an "evidence" line item, only the reference code
+    does — not a discrepancy, just the table being non-exhaustive).
+  - **`QuestPath` hand-built winding path** (`quests.tsx:246-326`): the
+    sine-curve formula (`y = baseY + sin(t * 1.25) * amplitude`) and the
+    furthest-milestone-reached logic (`[...pts].reverse().find(p =>
+    p.done) ?? pts[0]`) are faithful ports of the reference's `QuestPath`
+    (lines 1007-1042), just with different base/amplitude constants
+    since it's laid out in RN `View`s instead of an SVG viewBox — that's
+    fine, the shape/logic is what needed to match, not the exact pixel
+    values. Traced the x/y math by hand for 1, 2, and 4-milestone cases,
+    no divide-by-zero (`Math.max(n - 1, 1)` guards it) and node/Mochi
+    positions stay within the `150`px path height and full width. Worth
+    calling out as a **positive finding**: the reference's own
+    `QuestPath` has a latent crash bug — when `milestones.length === 0`,
+    `pts` is `[]`, so `here = [...pts].reverse().find(...) || pts[0]` is
+    `undefined`, and the next line does `here.x`/`here.y`, which would
+    throw in the original web prototype. The port sidesteps this by
+    special-casing `milestones.length === 0` into an invite-copy empty
+    state before any of that math runs (`quests.tsx:270-276`) — not
+    called out as a deliberate deviation in the build handoff, but it's
+    a strict improvement, not a bug, so nothing to fix.
+  - **Design rules** (all 7, checked against `CLAUDE.md` directly): no
+    red anywhere (`grep -ni "red\|error\|danger\|warning"` on the diff
+    came back clean); no completion percentage (`grep` for `%`,
+    `toFixed`, `Math.round` in the screen found nothing); Mochi's poses
+    on this screen (`thinking` in the header, `happy` inside
+    `QuestPath`) are both fixed/reference-matched constants, never
+    derived from missed/failed milestones — no violation of rule 5;
+    empty-quests copy invites rather than scolds ("No quests yet. What's
+    something you're growing toward? Add one below — you can always
+    start small."); progress reads as "N/M milestones · N moves made,"
+    an action count, never a percentage or grade; daily-streak/cozy-day
+    rules don't apply to this screen (no habit concept here) — correctly
+    not implemented, not silently missing.
+  - **Codebase conventions**: `quests.tsx` follows the same
+    `SafeAreaView`/`ScrollView` + `useFocusEffect`-driven `load()` +
+    optimistic local-state-after-write shape as `index.tsx`/`habits.tsx`;
+    all colors resolve to `src/theme/tokens.ts` (the one raw hex,
+    `#D3A8BE` for `placeholderTextColor`, is an existing established
+    pattern already used identically in `index.tsx` and `habits.tsx`,
+    not a new invention); IDs via `uid()`, dates via `dkey()`; no unused
+    imports (`LayoutChangeEvent`, `dkey`, `uid` are all genuinely used).
+  - Confirmed neither reference file was touched
+    (`git diff --stat` on `reference/` across the Phase 4 commit is
+    empty).
+  Not newly verified (unchanged from the build handoff's own caveat, no
+  Node.js this session either): the actual on-screen look of `QuestPath`
+  — node spacing, dot-trail legibility, whether Mochi visually sits "on"
+  the furthest node — still needs a real device/simulator check. Logged
+  in `TASKS.md`'s Phase 4 section rather than blocking on it, since it's
+  a "verify on device" item, not a correctness bug.
+  Phase 5 is clear to proceed regardless of that open item, per the
+  owner's standing instruction. — Claude Code (chat session, no Node.js
+  access; verified via `which node`/`npm`/`npx`/`nvm` rather than
+  assuming)
 - **2026-08-13** — Built Phase 4, the Quests screen
   (`app/(tabs)/quests.tsx`), replacing the placeholder. Ported from
   `reference/bearcat_planner.jsx`'s `Quests`/`QuestPath`/`MilestoneAdd`
