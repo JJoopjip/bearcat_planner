@@ -7,15 +7,15 @@ rule that keeps this file current.
 
 ## tl;dr for the next agent
 
-Phase 1 and Phase 3 (Habits) are done. Phase 2 (Today screen) is **half**
-done — the daily core works, but the "as it happens" quick-log row (focus
-timer, meditation+sleep log, workout log, money entry, brain-dump inbox)
-doesn't exist yet, even though the spec calls it out as part of Phase 2.
-Phase 4 (Quests) and the rest of Phase 5 (Money, remaining Me cards) are
-still not started. Nothing in this repo has ever been run — see
-"Environment constraints" below — so **actually running the project for
-the first time** remains the single highest-value next task regardless of
-which feature phase is picked up next. Full detail in `TASKS.md`.
+Phase 1, Phase 3 (Habits), and Phase 4 (Quests) are done. Phase 2 (Today
+screen) is **half** done — the daily core works, but the "as it happens"
+quick-log row (focus timer, meditation+sleep log, workout log, money
+entry, brain-dump inbox) doesn't exist yet, even though the spec calls it
+out as part of Phase 2. Phase 5 (Money, remaining Me cards) is still not
+started. Nothing in this repo has ever been run — see "Environment
+constraints" below — so **actually running the project for the first
+time** remains the single highest-value next task regardless of which
+feature phase is picked up next. Full detail in `TASKS.md`.
 
 ## What's been done, and how sure we are it works
 
@@ -26,7 +26,8 @@ which feature phase is picked up next. Full detail in `TASKS.md`.
 | Today: intention, mood, priorities, habits, one small win | Written, persists to SQLite | Not run |
 | Me: Apple Health widgets (steps/HR/exercise/sleep) | Written | Not run, and can only ever be tested on a real device with a paid Apple account (see README) |
 | Habits screen (Phase 3) | Written, persists to SQLite (and to the web demo's in-memory store) | Not run |
-| Quests / Money screens | Placeholder only | N/A |
+| Quests screen (Phase 4) | Written, persists to SQLite (and to the web demo's in-memory store) | Not run |
+| Money screen | Placeholder only | N/A |
 | GitHub Actions EAS build workflow | Written, manual-trigger-only | Failed on first run — expected, since `EXPO_TOKEN` + Apple credentials aren't set up yet |
 
 **"Written" does not mean "verified."** No session so far has had access to
@@ -78,16 +79,95 @@ handoff:
 
 1. Get the project actually running once (Node.js/Codespaces), fix
    whatever `tsc`/`expo start` surface — this now includes checking the
-   new Habits screen and its hand-built `PanResponder` slider actually
-   behave on a real touch device/simulator, since that's the newest
-   never-run code
+   Habits screen's hand-built `PanResponder` slider **and** the new
+   Quests screen's hand-built `QuestPath` (View-based winding path, no
+   SVG) actually look/behave right on a real touch device/simulator,
+   since those are the newest never-run pieces
 2. Build the Today screen's "as it happens" quick-log row + bottom sheets
    (finishes Phase 2)
-3. Port Quests screen (Phase 4)
-4. Port Money screen + finish Me screen's remaining cards (Phase 5)
+3. Port Money screen + finish Me screen's remaining cards (Phase 5)
+4. QA pass on Phase 4 (Quests) against `QUALITY_METRICS.md`, same as was
+   done for Phase 3
 
 ## Handoff log
 
+- **2026-08-13** — Built Phase 4, the Quests screen
+  (`app/(tabs)/quests.tsx`), replacing the placeholder. Ported from
+  `reference/bearcat_planner.jsx`'s `Quests`/`QuestPath`/`MilestoneAdd`
+  components almost line-for-line: quest cards with a 📌 prefix when
+  pinned and a "N/M milestones · N moves made[· resting]" subtitle, a
+  present-tense intention field (blur-to-save, same hint copy), a
+  milestone checklist where tapping toggles done and the moves-made
+  counter only ever increases on the false→true transition (never
+  decrements on uncheck — this is a deliberate faithfulness to the
+  reference, not a bug: "moves made" is meant to only increase, per
+  `claude_code_prompt.md`), an add-milestone row, an evidence log (dated
+  one-line entries, newest first, verbatim empty-state copy "Proof goes
+  here. Start with one line."), an add-evidence row, and Pin-to-Today /
+  Let it rest footer buttons (pinning is exclusive — pinning one quest
+  unpins all others, matching the reference's `pinned: x.id === q.id`
+  map). Berries: milestone +25, evidence +3, matching both
+  `claude_code_prompt.md`'s table and the reference's literal
+  `berries(25, "milestone!")` / `berries(3, "evidence")` calls.
+  Added full CRUD to `src/db/client.ts` — `getQuests`, `addQuest`,
+  `pinQuest`, `setQuestResting`, `setQuestIntention`, `adjustQuestMoves`,
+  `getAllMilestones`, `addMilestone`, `setMilestoneDone`,
+  `getAllEvidence`, `addEvidence` — with a matching `createWebStore()`
+  branch for every one of those queries, and seeded the web store's
+  in-memory `quests`/`milestones`/`evidence` arrays with the same "q1"
+  quest ("Find a role I'm excited about") and its 4 milestones that
+  `schema.ts`'s `migrate()` seeds for the real database, so the GitHub
+  Pages demo isn't empty on first load.
+  **Deliberate deviation, same pattern as Phase 3's slider substitution**:
+  the spec calls for "a winding pastel path... visualise as SVG" but no
+  SVG library (`react-native-svg`) is installed, and the user who'd
+  approve a new dependency was unreachable this session. `QuestPath`
+  inside `quests.tsx` is a hand-built substitute using only core
+  `View`/`StyleSheet` with absolute positioning: milestone nodes sit on
+  the *same* sine-wave curve formula the reference's SVG path used
+  (`y = baseY + sin(t * 1.25) * amplitude`), connected by a trail of
+  small dot Views sampled continuously along that curve (standing in for
+  the dashed SVG stroke), with Mochi (`happy` pose, `mini` — no bob
+  animation) positioned at the furthest milestone reached, using the same
+  "reverse-find the last done point, else the first point" logic as the
+  reference. This is **untested** — no Node.js this session, so nothing
+  about how it actually looks (spacing, whether Mochi visually sits "on"
+  the node, whether the dot trail reads as a path rather than noise) has
+  been confirmed on a real screen. If `react-native-svg` gets approved
+  later, `QuestPath` is fully self-contained and can be swapped for a
+  literal `<Svg>`/`<Path>` implementation without touching the rest of
+  the screen.
+  Verified by hand (no Node.js — see Environment constraints):
+  - Every column referenced in the new `client.ts` queries exists in
+    `schema.ts`'s `quests`/`milestones`/`evidence` tables with matching
+    types (`pinned`/`resting`/`done` as `INTEGER`, read back as 0/1 and
+    coerced with `!!`/`? 1 : 0` in the screen, same convention
+    `habit_log.status` uses).
+  - Every new `createWebStore()` `runAsync` branch's `sql.startsWith(...)`
+    prefix checked against the *actual* literal SQL string in the
+    corresponding `client.ts` function, side by side — specifically
+    confirmed `"UPDATE quests SET pinned = 0"` (no `WHERE`, used to unpin
+    everyone) and `"UPDATE quests SET pinned = 1 WHERE id = ?"` (used to
+    pin one) are distinct enough neither swallows the other, and neither
+    collides with `"UPDATE quests SET resting..."` /
+    `"UPDATE quests SET intention..."` / `"UPDATE quests SET moves..."`,
+    which all share the `"UPDATE quests SET "` prefix but diverge
+    immediately after.
+  - Design rules: no red anywhere (a `grep -i red` hit was a false
+    positive on the word "meaSURED"), no completion percentage displayed
+    anywhere (grepped for `%` in JSX text and `Math.round`/`toFixed` —
+    none), Mochi's pose on this screen (`thinking` in the header, `happy`
+    on the path) is fixed/reference-based, never derived from
+    missed/failed milestones, empty-quests copy invites rather than
+    scolds, resting is visually and functionally distinct from failure
+    (shows as a plain "· resting" suffix, not a warning state, and
+    doesn't block any interaction).
+  - Balanced braces/parens/brackets confirmed programmatically for both
+    changed files (`app/(tabs)/quests.tsx`, `src/db/client.ts`).
+  - `which node`/`npm`/`npx`/`nvm` checked myself, still genuinely absent
+    in this sandbox — no `tsc --noEmit` run.
+  Not yet done: a QA pass against `QUALITY_METRICS.md` (this was the
+  build session, not the QA session — flagged in "What's next" above).
 - **2026-08-13** — Built Phase 3, the Habits screen
   (`app/(tabs)/habits.tsx`), replacing the placeholder. Ported from
   `reference/bearcat_planner.jsx`'s `Habits` component and `streakOf()`

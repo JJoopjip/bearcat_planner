@@ -25,6 +25,16 @@ function createWebStore(): Db {
   ];
   const habitLog: HabitLogRow[] = [];
   const sessions: { kind: string; minutes: number }[] = [];
+  const quests: QuestRow[] = [
+    { id: "q1", name: "Find a role I'm excited about", intention: "I'm someone who reaches out before I feel ready.", pinned: 1, resting: 0, moves: 0 },
+  ];
+  const milestones: MilestoneRow[] = [
+    { id: "m1", quest_id: "q1", text: "Refresh my resume", done: 0, sort_order: 0 },
+    { id: "m2", quest_id: "q1", text: "Reach out to 5 people", done: 0, sort_order: 1 },
+    { id: "m3", quest_id: "q1", text: "Tailor 3 applications", done: 0, sort_order: 2 },
+    { id: "m4", quest_id: "q1", text: "Have 2 real conversations", done: 0, sort_order: 3 },
+  ];
+  const evidence: EvidenceRow[] = [];
 
   return {
     async getFirstAsync<T>(sql: string, params: unknown = []): Promise<T | null> {
@@ -47,6 +57,9 @@ function createWebStore(): Db {
         const [start, end] = p;
         return habitLog.filter((row) => row.date >= start && row.date <= end) as unknown as T[];
       }
+      if (sql.includes("FROM quests")) return quests as unknown as T[];
+      if (sql.includes("FROM milestones")) return milestones as unknown as T[];
+      if (sql.includes("FROM evidence")) return evidence as unknown as T[];
       return [];
     },
     async runAsync(sql: string, params: unknown = []): Promise<any> {
@@ -73,6 +86,32 @@ function createWebStore(): Db {
       } else if (sql.startsWith("INSERT INTO sessions")) {
         const [, , kind, minutes] = p;
         sessions.push({ kind, minutes });
+      } else if (sql.startsWith("INSERT INTO quests")) {
+        const [id, name] = p;
+        quests.push({ id, name, intention: "", pinned: 0, resting: 0, moves: 0 });
+      } else if (sql.startsWith("UPDATE quests SET pinned = 0")) {
+        quests.forEach((q) => (q.pinned = 0));
+      } else if (sql.startsWith("UPDATE quests SET pinned = 1 WHERE id = ?")) {
+        const q = quests.find((r) => r.id === p[0]);
+        if (q) q.pinned = 1;
+      } else if (sql.startsWith("UPDATE quests SET resting = ? WHERE id = ?")) {
+        const q = quests.find((r) => r.id === p[1]);
+        if (q) q.resting = p[0];
+      } else if (sql.startsWith("UPDATE quests SET intention = ? WHERE id = ?")) {
+        const q = quests.find((r) => r.id === p[1]);
+        if (q) q.intention = p[0];
+      } else if (sql.startsWith("UPDATE quests SET moves = moves + ? WHERE id = ?")) {
+        const q = quests.find((r) => r.id === p[1]);
+        if (q) q.moves += p[0];
+      } else if (sql.startsWith("INSERT INTO milestones")) {
+        const [id, questId, text, sortOrder] = p;
+        milestones.push({ id, quest_id: questId, text, done: 0, sort_order: sortOrder });
+      } else if (sql.startsWith("UPDATE milestones SET done = ? WHERE id = ?")) {
+        const m = milestones.find((r) => r.id === p[1]);
+        if (m) m.done = p[0];
+      } else if (sql.startsWith("INSERT INTO evidence")) {
+        const [id, questId, date, text] = p;
+        evidence.push({ id, quest_id: questId, date, text });
       }
       // workouts / sleep_log inserts: no-op — nothing in this file reads them back yet
       return undefined as any;
@@ -105,6 +144,9 @@ export type BearcatRow = {
 export type HabitRow = { id: string; name: string; emoji: string; target: number };
 export type HabitLogRow = { habit_id: string; date: string; status: "done" | "cozy" };
 export type PriorityRow = { id: string; date: string; text: string; done: number };
+export type QuestRow = { id: string; name: string; intention: string; pinned: number; resting: number; moves: number };
+export type MilestoneRow = { id: string; quest_id: string; text: string; done: number; sort_order: number };
+export type EvidenceRow = { id: string; quest_id: string; date: string; text: string };
 
 export async function getBearcat(): Promise<BearcatRow> {
   const db = await getDb();
@@ -223,4 +265,61 @@ export async function getMinutesByKind(kind: "focus" | "meditate"): Promise<numb
     [kind]
   );
   return row?.total ?? 0;
+}
+
+export async function getQuests(): Promise<QuestRow[]> {
+  const db = await getDb();
+  return db.getAllAsync<QuestRow>("SELECT * FROM quests ORDER BY rowid");
+}
+
+export async function addQuest(id: string, name: string): Promise<void> {
+  const db = await getDb();
+  await db.runAsync("INSERT INTO quests (id, name, intention, pinned, resting, moves) VALUES (?, ?, '', 0, 0, 0)", [id, name]);
+}
+
+export async function pinQuest(id: string): Promise<void> {
+  const db = await getDb();
+  // Only one quest can be pinned at a time (mirrors the reference prototype).
+  await db.runAsync("UPDATE quests SET pinned = 0");
+  await db.runAsync("UPDATE quests SET pinned = 1 WHERE id = ?", [id]);
+}
+
+export async function setQuestResting(id: string, resting: boolean): Promise<void> {
+  const db = await getDb();
+  await db.runAsync("UPDATE quests SET resting = ? WHERE id = ?", [resting ? 1 : 0, id]);
+}
+
+export async function setQuestIntention(id: string, text: string): Promise<void> {
+  const db = await getDb();
+  await db.runAsync("UPDATE quests SET intention = ? WHERE id = ?", [text, id]);
+}
+
+export async function adjustQuestMoves(id: string, delta: number): Promise<void> {
+  const db = await getDb();
+  await db.runAsync("UPDATE quests SET moves = moves + ? WHERE id = ?", [delta, id]);
+}
+
+export async function getAllMilestones(): Promise<MilestoneRow[]> {
+  const db = await getDb();
+  return db.getAllAsync<MilestoneRow>("SELECT * FROM milestones ORDER BY sort_order");
+}
+
+export async function addMilestone(id: string, questId: string, text: string, sortOrder: number): Promise<void> {
+  const db = await getDb();
+  await db.runAsync("INSERT INTO milestones (id, quest_id, text, done, sort_order) VALUES (?, ?, ?, 0, ?)", [id, questId, text, sortOrder]);
+}
+
+export async function setMilestoneDone(id: string, done: boolean): Promise<void> {
+  const db = await getDb();
+  await db.runAsync("UPDATE milestones SET done = ? WHERE id = ?", [done ? 1 : 0, id]);
+}
+
+export async function getAllEvidence(): Promise<EvidenceRow[]> {
+  const db = await getDb();
+  return db.getAllAsync<EvidenceRow>("SELECT * FROM evidence ORDER BY date DESC");
+}
+
+export async function addEvidence(id: string, questId: string, date: string, text: string): Promise<void> {
+  const db = await getDb();
+  await db.runAsync("INSERT INTO evidence (id, quest_id, date, text) VALUES (?, ?, ?, ?)", [id, questId, date, text]);
 }

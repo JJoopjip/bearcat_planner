@@ -65,14 +65,60 @@ Check items off as they're verified working, not just written — see
       `TargetSlider` and `borderStyle: "dotted"` rendering, since neither
       has ever been visually confirmed on iOS.
 
-## Phase 4 — Quests screen — not started
+## Phase 4 — Quests screen — done (unverified, no Node in this session)
 
-`app/(tabs)/quests.tsx` is a placeholder. Needs: quest cards with
-intention card, milestones, moves-made counter, evidence log, pin/rest
-toggle, and the winding-path SVG visualization with Mochi (`happy` pose)
-at the furthest milestone reached. `milestones` and `evidence` tables
-already exist in the schema; `quests` table exists but `client.ts` has no
-CRUD for any of the three yet.
+- [x] `app/(tabs)/quests.tsx` built, replacing the placeholder. Ported
+      from `reference/bearcat_planner.jsx`'s `Quests`/`QuestPath`/
+      `MilestoneAdd` components: quest cards (📌 prefix when pinned,
+      "N/M milestones · N moves made · resting" subtitle), present-tense
+      intention field (blur-to-save, hint copy verbatim), milestone
+      checklist (tap toggles done, moves-made only ever increases on the
+      done transition, never decrements on uncheck — matches the
+      reference exactly), add-milestone row, evidence log (dated
+      one-liners, newest first, empty-state invite copy verbatim: "Proof
+      goes here. Start with one line."), add-evidence row, and
+      Pin-to-Today / Let it rest footer buttons (pinning is exclusive
+      across quests, resting is a toggle, neither awards/removes
+      berries). Empty-quests state invites rather than scolds ("No
+      quests yet. What's something you're growing toward? Add one below
+      — you can always start small."). Berries: milestone +25, evidence
+      +3 — both match `reference/claude_code_prompt.md`'s table and the
+      prototype's `berries(25, "milestone!")` / `berries(3, "evidence")`
+      calls.
+- [x] `client.ts` gained full CRUD for quests/milestones/evidence:
+      `getQuests`, `addQuest`, `pinQuest` (unpins all others first —
+      only one quest can be pinned at a time, matching the reference),
+      `setQuestResting`, `setQuestIntention`, `adjustQuestMoves`,
+      `getAllMilestones`, `addMilestone`, `setMilestoneDone`,
+      `getAllEvidence`, `addEvidence` — plus matching `createWebStore()`
+      branches for every one of those queries (in-memory `quests`,
+      `milestones`, `evidence` arrays), seeded with the same "q1" quest
+      + 4 milestones `schema.ts`'s `migrate()` seeds, so the GitHub Pages
+      demo isn't empty on first load.
+- [x] **Deliberate substitution, documented in code and here**: no SVG
+      library is installed and adding one (`react-native-svg`) wasn't
+      approved this session (owner unreachable, same constraint as the
+      Habits slider). The winding-path visualization is a hand-built
+      `QuestPath` component in `quests.tsx` using only `View`/
+      `StyleSheet`/absolute positioning: milestone nodes are placed along
+      the *same* sine-wave curve formula as the reference's SVG `path`
+      (`y = baseY + sin(t * 1.25) * amplitude`), connected by a trail of
+      small dots sampled continuously along that curve (standing in for
+      the stroked/dashed SVG path), with Mochi (`happy` pose, `mini`)
+      positioned at the furthest milestone reached — same logic as the
+      reference's `here = [...pts].reverse().find(p => p.done) ??
+      pts[0]`. Visually this should read as "a winding path with a dotted
+      trail and stops," not literally curved/smooth like an SVG
+      `<path>`, and the exact pixel alignment of Mochi over the furthest
+      node is an approximation (`top: here.y - 40`, hand-tuned to roughly
+      mirror the reference's `translate(-50%, -88%)`), not something that
+      could be verified without running the app. If
+      `react-native-svg` is later approved, `QuestPath` is fully
+      self-contained and swappable without touching the rest of the
+      screen.
+- [ ] Not run — see Environment constraints, no Node.js this session.
+      `tsc --noEmit` could not be executed; balanced-braces check done
+      programmatically instead (see handoff).
 
 ## Phase 5 — Money and Me screens — Me partially done
 
