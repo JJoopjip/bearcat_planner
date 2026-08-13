@@ -82,6 +82,25 @@ handoff:
 
 ## Handoff log
 
+- **2026-08-12** — Added a GitHub Pages web deploy, at the user's request,
+  for a public shareable demo link (like their portfolio site) — this is
+  in addition to the real iOS app, not a replacement for it. Changes:
+  `app.json` gained `expo.experiments.baseUrl: "/bearcat_planner"` (project
+  page subpath) and `expo.web.output: "static"`; `package.json` gained
+  `react-native-web`, `react-dom`, `@expo/metro-runtime` deps and a
+  `build:web` script (`expo export -p web`); new
+  `.github/workflows/deploy-pages.yml` runs on push to `main` (`npm
+  install` — no lockfile exists yet, so not `npm ci`), exports the static
+  web build, and deploys it via `actions/deploy-pages`. **Unverified**,
+  same caveat as everything else in this repo: no Node.js in this session,
+  so the web export has never actually been run. `react-native-health` is
+  already guarded behind `Platform.OS === "ios"` in `src/lib/health.ts` and
+  `expo-sqlite` claims web support via IndexedDB since SDK 49+, so both
+  *should* degrade gracefully on web, but that's untested. One manual step
+  the user still needs to do once: repo Settings → Pages → Source →
+  "GitHub Actions" (can't be done from this sandbox, no `gh` CLI / API
+  token available). First push will likely surface real build errors —
+  treat those as expected, not as new regressions to panic over.
 - **2026-08-10** — Initial scaffold (Phase 1 + partial Phase 2 + Health
   widgets), pushed to GitHub, EAS workflow set to manual-only after a
   failed auto-run. Created this file, `CLAUDE.md`, `TASKS.md`, and copied
