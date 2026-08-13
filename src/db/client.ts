@@ -59,6 +59,9 @@ function createWebStore(): Db {
       else if (sql.startsWith("UPDATE priorities")) {
         const row = priorities.find((r) => r.id === p[1]);
         if (row) row.done = p[0];
+      } else if (sql.startsWith("INSERT INTO habits")) {
+        const [id, name, emoji, target] = p;
+        habits.push({ id, name, emoji, target });
       } else if (sql.startsWith("DELETE FROM habit_log")) {
         const idx = habitLog.findIndex((r) => r.habit_id === p[0] && r.date === p[1]);
         if (idx !== -1) habitLog.splice(idx, 1);
@@ -179,6 +182,11 @@ export async function getHabits(): Promise<HabitRow[]> {
 export async function getHabitLogForRange(startDate: string, endDate: string): Promise<HabitLogRow[]> {
   const db = await getDb();
   return db.getAllAsync<HabitLogRow>("SELECT * FROM habit_log WHERE date >= ? AND date <= ?", [startDate, endDate]);
+}
+
+export async function addHabit(id: string, name: string, emoji: string, target: number): Promise<void> {
+  const db = await getDb();
+  await db.runAsync("INSERT INTO habits (id, name, emoji, target) VALUES (?, ?, ?, ?)", [id, name, emoji, target]);
 }
 
 export async function setHabitLog(habitId: string, date: string, status: "done" | "cozy" | null): Promise<void> {

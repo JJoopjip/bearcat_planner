@@ -35,13 +35,28 @@ Check items off as they're verified working, not just written — see
       list reader), sleep_log (write-only, no reads), notes, inbox,
       reflections. Add these alongside the sheets that need them.
 
-## Phase 3 — Habits screen — not started
+## Phase 3 — Habits screen — done (unverified, no Node in this session)
 
-`app/(tabs)/habits.tsx` is a placeholder. Needs: one card per habit
-(emoji, name, "N of M this week", week-streak badge via decaying-streak
-logic, 7-square backfillable week grid), add-habit form with 1–7 target
-slider, nudge toward 4–5 habits max. The web demo's `HabitsScreen` and
-`streakOf()` have this validated already — port, don't redesign.
+- [x] One card per habit: emoji, name, "N of M this week" (+ "target met"
+      note when hit), decaying week-streak badge (`streakOf`, 8-week
+      lookback, ported from `reference/bearcat_planner.jsx`'s `Habits`
+      component almost verbatim)
+- [x] 7-square backfillable week grid per habit (tap cycles
+      none → done → cozy (max one cozy/week) → none; future days disabled;
+      missed days render as a dotted `pinkPale` outline, never red)
+- [x] Add-habit form: emoji picker chips, name input, 1–7 target selector,
+      "four or five is plenty" hint + non-blocking nudge text at 5+ habits
+- [x] `client.ts` gained `addHabit()`, plus a matching `createWebStore()`
+      branch so the GitHub Pages demo can create habits too
+- [ ] **Caveat**: the spec says "target slider" — there's no
+      `@react-native-community/slider` dependency installed and adding one
+      wasn't allowed this session (owner unreachable), so it's a hand-built
+      drag/tap track using core `PanResponder` (no new deps), with 1–7 tick
+      labels underneath. Behavior should match a slider; untested on
+      device/simulator. If the real slider component is later approved,
+      swapping it in is a self-contained change inside `TargetSlider` in
+      `habits.tsx`.
+- [ ] Not run — see Environment constraints, no Node.js this session.
 
 ## Phase 4 — Quests screen — not started
 

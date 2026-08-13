@@ -1,18 +1,21 @@
 # SESSION_HANDOFF.md
 
-**Last updated:** 2026-08-10, by a Claude Code session (chat-based, no
+**Last updated:** 2026-08-13, by a Claude Code session (chat-based, no
 Node.js available in its environment — see "Environment constraints"
 below). Read `CLAUDE.md` first if you haven't; it explains the hygiene
 rule that keeps this file current.
 
 ## tl;dr for the next agent
 
-Phase 1 is done. Phase 2 (Today screen) is **half** done — the daily core
-works, but the "as it happens" quick-log row (focus timer, meditation+sleep
-log, workout log, money entry, brain-dump inbox) doesn't exist yet, even
-though the spec calls it out as part of Phase 2. That's the highest-value
-next task, followed by actually running the project for the first time
-(see below — this has never been done). Full detail in `TASKS.md`.
+Phase 1 and Phase 3 (Habits) are done. Phase 2 (Today screen) is **half**
+done — the daily core works, but the "as it happens" quick-log row (focus
+timer, meditation+sleep log, workout log, money entry, brain-dump inbox)
+doesn't exist yet, even though the spec calls it out as part of Phase 2.
+Phase 4 (Quests) and the rest of Phase 5 (Money, remaining Me cards) are
+still not started. Nothing in this repo has ever been run — see
+"Environment constraints" below — so **actually running the project for
+the first time** remains the single highest-value next task regardless of
+which feature phase is picked up next. Full detail in `TASKS.md`.
 
 ## What's been done, and how sure we are it works
 
@@ -22,7 +25,8 @@ next task, followed by actually running the project for the first time
 | Mochi component, all 16 poses, precedence logic | Written | Not run |
 | Today: intention, mood, priorities, habits, one small win | Written, persists to SQLite | Not run |
 | Me: Apple Health widgets (steps/HR/exercise/sleep) | Written | Not run, and can only ever be tested on a real device with a paid Apple account (see README) |
-| Habits / Quests / Money screens | Placeholder only | N/A |
+| Habits screen (Phase 3) | Written, persists to SQLite (and to the web demo's in-memory store) | Not run |
+| Quests / Money screens | Placeholder only | N/A |
 | GitHub Actions EAS build workflow | Written, manual-trigger-only | Failed on first run — expected, since `EXPO_TOKEN` + Apple credentials aren't set up yet |
 
 **"Written" does not mean "verified."** No session so far has had access to
@@ -73,15 +77,59 @@ See `TASKS.md` for the full backlog. In priority order, as of this
 handoff:
 
 1. Get the project actually running once (Node.js/Codespaces), fix
-   whatever `tsc`/`expo start` surface
+   whatever `tsc`/`expo start` surface — this now includes checking the
+   new Habits screen and its hand-built `PanResponder` slider actually
+   behave on a real touch device/simulator, since that's the newest
+   never-run code
 2. Build the Today screen's "as it happens" quick-log row + bottom sheets
    (finishes Phase 2)
-3. Port Habits screen (Phase 3)
-4. Port Quests screen (Phase 4)
-5. Port Money screen + finish Me screen's remaining cards (Phase 5)
+3. Port Quests screen (Phase 4)
+4. Port Money screen + finish Me screen's remaining cards (Phase 5)
 
 ## Handoff log
 
+- **2026-08-13** — Built Phase 3, the Habits screen
+  (`app/(tabs)/habits.tsx`), replacing the placeholder. Ported from
+  `reference/bearcat_planner.jsx`'s `Habits` component and `streakOf()`
+  almost line-for-line: one card per habit (emoji, name, "N of M this
+  week" + "target met" note, decaying week-streak badge with an 8-week
+  lookback), a 7-square current-week grid per habit where tapping cycles
+  none → done → cozy → none (max one cozy day/week, future days disabled,
+  backfilling past days of the current week works), and an add-habit form
+  (emoji chips, name field, 1–7 target, "four or five is plenty" hint plus
+  a non-blocking nudge line once you're at 5+ habits). Design rules
+  double-checked against `CLAUDE.md`: no red anywhere (missed days are a
+  dotted `colors.pinkPale` outline via `borderStyle: "dotted"`, not a
+  warning color or cross), cozy days render in `colors.lilac` and are
+  visually distinct from a miss, streak math only ever decrements by one
+  on a miss (`Math.max(0, streak - 1)`, never resets to 0 outright unless
+  it's already ≤1), copy stays invitational ("No habits yet. Add one
+  below — small and doable beats big and abandoned.", never a percentage
+  framed as failure). Added `addHabit()` to `src/db/client.ts` (schema's
+  `habits` table only has `id/name/emoji/target`, no archived/active flag,
+  so no delete/archive function was added — the reference web prototype
+  doesn't have one either, and it wasn't asked for). Added a matching
+  `INSERT INTO habits` branch to `createWebStore()` so habit creation also
+  works on the public GitHub Pages demo, following the file's existing
+  pattern exactly.
+  **Deliberate deviation from the literal spec wording**: "1–7 target
+  slider" — there is no slider dependency installed
+  (`@react-native-community/slider` or similar) and the user who'd approve
+  a new dependency was unreachable this session, so `TargetSlider` inside
+  `habits.tsx` is a hand-built drag/tap track using only core
+  `react-native`'s `PanResponder` (no new deps), with 1–7 tick labels
+  underneath for legibility since it has none of a native slider's
+  built-in affordances. It should behave equivalently (drag or tap
+  anywhere on the track to set 1–7) but is **unverified** — this session
+  has no Node.js, so nothing in this repo, including this new screen, has
+  ever actually been run. If `@react-native-community/slider` gets
+  approved later, swapping it in is scoped entirely to that one component.
+  Also unverified/assumed: `borderStyle: "dotted"` rendering correctly on
+  iOS (it's a documented RN style value, but never visually confirmed
+  here), and the `PanResponder` recreated fresh every render (rather than
+  memoized in a `useRef`) continuing a drag gesture correctly across
+  re-renders — this is standard-ish RN practice but worth a real finger-on-
+  glass check on first run.
 - **2026-08-13** — Follow-up: the web deploy added 2026-08-12 failed CI
   twice. `npx expo export -p web` needs `expo-asset` and `expo-font`
   resolvable as *direct* node_modules entries (`@expo/metro-config`'s
