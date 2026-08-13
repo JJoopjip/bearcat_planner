@@ -1,11 +1,89 @@
-import * as SQLite from "expo-sqlite";
+import { Platform } from "react-native";
+import type { SQLiteDatabase } from "expo-sqlite";
 import { migrate } from "./schema";
 
-let dbPromise: Promise<SQLite.SQLiteDatabase> | null = null;
+// expo-sqlite ~15 (this SDK 52 pin) has no web implementation at all —
+// requireNativeModule("ExpoSQLite") throws the instant the module is
+// evaluated, which crashes the whole web build before React can render.
+// So on web we skip importing it entirely and use this in-memory
+// stand-in instead, covering exactly the queries this file issues. It's
+// seeded to match `migrate()`'s defaults but doesn't persist across
+// reloads — fine for a demo link, not a substitute for the real app.
+type Db = Pick<SQLiteDatabase, "getFirstAsync" | "getAllAsync" | "runAsync">;
 
-export function getDb(): Promise<SQLite.SQLiteDatabase> {
+function createWebStore(): Db {
+  const bearcat = { name: "Mochi", berries: 12, scene: null as string | null, owned_scenes: "[]" };
+  const intentions = new Map<string, string>();
+  const moods = new Map<string, number>();
+  const wins = new Map<string, string>();
+  const priorities: PriorityRow[] = [];
+  const habits: HabitRow[] = [
+    { id: "h1", name: "Meditate", emoji: "\u{1F9D8}", target: 5 },
+    { id: "h2", name: "Workout", emoji: "\u{1F3C3}", target: 4 },
+    { id: "h3", name: "Read", emoji: "\u{1F4D6}", target: 4 },
+    { id: "h4", name: "Walk outside", emoji: "\u{1F33F}", target: 5 },
+  ];
+  const habitLog: HabitLogRow[] = [];
+  const sessions: { kind: string; minutes: number }[] = [];
+
+  return {
+    async getFirstAsync<T>(sql: string, params: unknown = []): Promise<T | null> {
+      const p = params as any[];
+      if (sql.includes("FROM bearcat")) return { ...bearcat } as unknown as T;
+      if (sql.includes("FROM intentions")) return (intentions.has(p[0]) ? { text: intentions.get(p[0]) } : null) as T | null;
+      if (sql.includes("FROM moods")) return (moods.has(p[0]) ? { value: moods.get(p[0]) } : null) as T | null;
+      if (sql.includes("FROM wins")) return (wins.has(p[0]) ? { text: wins.get(p[0]) } : null) as T | null;
+      if (sql.includes("SUM(minutes)")) {
+        const total = sessions.filter((s) => s.kind === p[0]).reduce((sum, s) => sum + s.minutes, 0);
+        return { total } as unknown as T;
+      }
+      return null;
+    },
+    async getAllAsync<T>(sql: string, params: unknown = []): Promise<T[]> {
+      const p = params as any[];
+      if (sql.includes("FROM priorities")) return priorities.filter((row) => row.date === p[0]) as unknown as T[];
+      if (sql.includes("FROM habits")) return habits as unknown as T[];
+      if (sql.includes("FROM habit_log")) {
+        const [start, end] = p;
+        return habitLog.filter((row) => row.date >= start && row.date <= end) as unknown as T[];
+      }
+      return [];
+    },
+    async runAsync(sql: string, params: unknown = []): Promise<any> {
+      const p = params as any[];
+      if (sql.startsWith("UPDATE bearcat")) bearcat.berries += p[0];
+      else if (sql.startsWith("INSERT INTO intentions")) intentions.set(p[0], p[1]);
+      else if (sql.startsWith("INSERT INTO moods")) moods.set(p[0], p[1]);
+      else if (sql.startsWith("INSERT INTO wins")) wins.set(p[0], p[1]);
+      else if (sql.startsWith("INSERT INTO priorities")) priorities.push({ id: p[0], date: p[1], text: p[2], done: 0 });
+      else if (sql.startsWith("UPDATE priorities")) {
+        const row = priorities.find((r) => r.id === p[1]);
+        if (row) row.done = p[0];
+      } else if (sql.startsWith("DELETE FROM habit_log")) {
+        const idx = habitLog.findIndex((r) => r.habit_id === p[0] && r.date === p[1]);
+        if (idx !== -1) habitLog.splice(idx, 1);
+      } else if (sql.startsWith("INSERT INTO habit_log")) {
+        const [habitId, date, status] = p;
+        const existing = habitLog.find((r) => r.habit_id === habitId && r.date === date);
+        if (existing) existing.status = status;
+        else habitLog.push({ habit_id: habitId, date, status });
+      } else if (sql.startsWith("INSERT INTO sessions")) {
+        const [, , kind, minutes] = p;
+        sessions.push({ kind, minutes });
+      }
+      // workouts / sleep_log inserts: no-op — nothing in this file reads them back yet
+      return undefined as any;
+    },
+  };
+}
+
+let dbPromise: Promise<Db> | null = null;
+
+export function getDb(): Promise<Db> {
   if (!dbPromise) {
     dbPromise = (async () => {
+      if (Platform.OS === "web") return createWebStore();
+      const SQLite = require("expo-sqlite") as typeof import("expo-sqlite");
       const db = await SQLite.openDatabaseAsync("bearcat-planner.db");
       await migrate(db);
       return db;
