@@ -125,6 +125,10 @@ phase:
 
 ## Handoff log
 
+- **2026-08-13** — Added `IMPROVEMENT_ADVICE.md`: a standalone market/
+  competitive research + strategic advice doc for the owner (not a build
+  log, doesn't affect the priorities above — the "get it running on real
+  Node.js/Xcode" item is still the top engineering priority regardless).
 - **2026-08-13** — QA pass on Phase 5 (Money screen + remaining Me cards),
   the last QA of the three-phase session. Applied `QUALITY_METRICS.md` as-
   is plus the extra checks called out for this phase specifically.
