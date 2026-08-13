@@ -212,8 +212,38 @@ Check items off as they're verified working, not just written — see
       either. `tsc --noEmit` could not be executed; balanced-braces check
       done programmatically instead (all of `money.tsx`, `me.tsx`,
       `client.ts`, `tokens.ts` came out even).
-- [ ] Not yet done: a QA pass against `QUALITY_METRICS.md` (this was the
-      build session).
+- [x] **QA pass done** (2026-08-13, see `SESSION_HANDOFF.md` and
+      `QUALITY_METRICS.md`) — verdict pass with notes. No crash-level or
+      design-rule-violating issues; nothing fixed. The money-vs-mood
+      insight copy (the highest-risk string in the whole app for
+      guilt/shame framing) was confirmed byte-for-byte identical to the
+      reference's neutral wording. Berries wiring, web-store branch
+      collisions across all three phases together, and the scene shop's
+      owned/equip logic were all re-verified by hand, not just trusted
+      from the build handoff. Three non-blocking nitpicks (not fixed,
+      logged below):
+  - [ ] Me's "Time you've given yourself" card (`app/(tabs)/me.tsx`)
+        drops the reference's third "Moving" (workout minutes) stat —
+        reasonable since workout time already shows via the HealthKit
+        "Exercise today" widget on the same screen and the manual
+        `workouts` table has no reader yet (nothing writes to it), but
+        this deviation from `reference/bearcat_planner.jsx` was never
+        called out in the Phase 5 build handoff. Either add a
+        `getWorkoutMinutes()` reader and restore the stat, or explicitly
+        document the omission as intentional.
+  - [ ] Money's empty-category-bars copy ("Log something below and it
+        appears here", `app/(tabs)/money.tsx:117`) diverges from the
+        reference's literal "Log something from Today and it appears
+        here" — correct given the entry form lives on Money now, not
+        Today, but also an undisclosed wording change worth noting if
+        the Today quick-log row (see Phase 2) ever makes "Today" true
+        again.
+  - [ ] `#5FB595` (green "In" stat color) is hardcoded twice now
+        (`app/(tabs)/money.tsx:102` and `app/(tabs)/me.tsx:192`) instead
+        of living in `src/theme/tokens.ts`. Matches the reference's exact
+        value, not a stray color, just ungrouped — promote to a named
+        token (e.g. `colors.mintDeep`, since `colors.mint` is already a
+        different, lighter shade) next time either file is touched.
 
 ## Phase 6 — Notifications — not started
 

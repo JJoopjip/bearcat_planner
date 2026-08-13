@@ -1,25 +1,33 @@
 # SESSION_HANDOFF.md
 
-**Last updated:** 2026-08-13, by a Claude Code session that built Phase 5
+**Last updated:** 2026-08-13, by a Claude Code session that QA'd Phase 5
 (chat-based, no Node.js available in its environment — see "Environment
 constraints" below). Read `CLAUDE.md` first if you haven't; it explains
 the hygiene rule that keeps this file current.
 
 ## tl;dr for the next agent
 
-**This was the last of the three requested phases (3, 4, 5).** Phase 1,
-Phase 3 (Habits), Phase 4 (Quests), and now Phase 5 (Money + remaining Me
-cards) are all built. Phase 2 (Today screen) is still **half** done — the
-daily core works, but the "as it happens" quick-log row (focus timer,
-meditation+sleep log, workout log, money entry, brain-dump inbox) doesn't
-exist yet, even though the spec calls it out as part of Phase 2; Money
-entries and manual sleep logs can currently only be added from their own
-full screens (Money, Me), not from a quick-log sheet on Today. Nothing in
-this repo has ever been run on Node.js in any session that's touched it —
-see "Environment constraints" below — so **actually running the project
-for the first time, on a real machine with Node/Xcode**, is now the
-single highest-value next step, more than any remaining feature work.
-Full detail in `TASKS.md`.
+**Phases 3, 4, and 5 — all three requested this session — are now built
+AND QA'd** (verdicts: Phase 3 pass, Phase 4 pass with notes, Phase 5 pass
+with notes; see the Handoff log below for specifics of each). Phase 2
+(Today screen) is still **half** done — the daily core works, but the "as
+it happens" quick-log row (focus timer, meditation+sleep log, workout log,
+money entry, brain-dump inbox) doesn't exist yet, even though the spec
+calls it out as part of Phase 2; Money entries and manual sleep logs can
+currently only be added from their own full screens (Money, Me), not from
+a quick-log sheet on Today.
+
+**The single highest-priority next step for whoever picks this up:**
+nothing in this repo has ever actually been run — no session that's
+touched it has had Node.js available, so `npm install`, `tsc --noEmit`,
+and `expo start`/`expo run:ios` have never executed against this code
+once, across five phases. Every QA pass so far (including this one) has
+been a careful hand/programmatic review, not a real compile or render.
+Get it onto a real Node.js environment (GitHub Codespaces is the known-
+free option) or a Mac with Xcode, run `tsc --noEmit` first, then actually
+launch it — that will surface real issues faster than any further code
+review can, and everything built on top of this unverified foundation
+inherits its risk until someone does. Full detail in `TASKS.md`.
 
 ## What's been done, and how sure we are it works
 
@@ -110,12 +118,124 @@ phase:
    original intent was quick one-tap sheets from Today too. Once that
    row exists, `addWorkout`/`addSession`'s embedded berries grants
    (added this session) will start firing without any further wiring.
-4. A QA pass against `QUALITY_METRICS.md` for Phase 5 hasn't happened yet
-   (this was the build session) — same rubric used for Phases 3/4, reuse
-   as-is.
+4. ~~A QA pass against `QUALITY_METRICS.md` for Phase 5~~ — **done**, see
+   the Handoff log entry below (verdict: pass with notes). All three
+   feature phases requested this session are now built and QA'd; from
+   here it's cross-cutting work only (items 1-3 above).
 
 ## Handoff log
 
+- **2026-08-13** — QA pass on Phase 5 (Money screen + remaining Me cards),
+  the last QA of the three-phase session. Applied `QUALITY_METRICS.md` as-
+  is plus the extra checks called out for this phase specifically.
+  **Verdict: pass with notes** — no crash-level or design-rule-violating
+  issues, nothing fixed, three nitpicks logged in `TASKS.md`.
+  Checked `which node`/`command -v node`/`npm`/`npx`/`nvm` myself first
+  (per the rubric's explicit instruction not to assume) — genuinely
+  absent again (the only `node` hits on the machine were `/proc/irq/*/node`
+  kernel entries, not the runtime), so `tsc --noEmit` could not be run;
+  fell back to a programmatic brace/paren/bracket balance check on all
+  four changed files (`money.tsx`, `me.tsx`, `client.ts`, `tokens.ts` —
+  all balanced) plus a full line-by-line read of `client.ts` end to end
+  (all three phases' additions together, not just Phase 5's).
+  Specifically verified:
+  - **Money's low-mood-vs-good-day insight copy** (`money.tsx:129-138`):
+    the literal strings ("On low-mood days you spend about $X. On good
+    days, $Y." + "Worth noticing."/"Nicely steady.") are a byte-for-byte
+    match of `reference/bearcat_planner.jsx:1113-1118`'s `spendOn()`/JSX,
+    including the conditional-render guard (`low !== null && high !==
+    null`) and the same `low > high * 1.2` threshold. No color coding, no
+    icon, no "overspending" language — reads as observation either way,
+    genuinely the least shame-coded pattern I've seen this rubric applied
+    to. This was the single highest-risk item in the phase per the task
+    brief, and it checks out clean.
+  - Every new `client.ts` query's columns checked against `schema.ts`:
+    `money` (id/date/amount/dir/category), `notes` (id/date/text),
+    `reflections` (week_key/proud/learned/next), `sleep_log`
+    (id/date/hours/quality), and `bearcat`'s `owned_scenes`/`scene`
+    columns used by `buyScene`/`setScene` — all match exactly, including
+    nullability (`scene TEXT` nullable, `setScene(null)` clears it
+    correctly).
+  - **All `createWebStore()` branches, read top to bottom** (not just
+    Phase 5's additions) for prefix collisions, in both directions:
+    `INSERT INTO money`/`sleep_log`/`notes`/`reflections` are each
+    distinct enough from every existing table prefix (specifically
+    checked `money` vs `moods` — they diverge at the 3rd character after
+    `INSERT INTO mo`, so neither `startsWith` swallows the other) and the
+    three `UPDATE bearcat` branches are ordered specific-to-general
+    correctly (`berries = berries + ?` / `berries = berries - ?` /
+    `scene = ?`, in that order, each diverging immediately after
+    `UPDATE bearcat SET `). The builder's own claimed fix — narrowing a
+    bare `"UPDATE bearcat"` check to `"UPDATE bearcat SET berries =
+    berries + ?"` — is real and correct, verified by reading the current
+    file (`client.ts:94`), not just trusting the commit message. Every
+    `getAllAsync` branch with a real `ORDER BY date DESC` (`evidence`,
+    `money`, `notes`) or `ORDER BY date DESC LIMIT ?` (`sleep_log`) has a
+    matching `.sort(...)` (and `.slice(0, p[0])` for the `LIMIT`) in its
+    web-store branch — confirmed each one, not just evidence (which
+    Phase 4's QA already fixed).
+  - **Berries wiring**: `addWorkout`/`addSession` each call `addBerries(5)`
+    exactly once per function, matching the spec's table (workout +5,
+    focus-or-meditation session +5) — and neither function is called
+    anywhere in `app/` or `src/` yet (grepped for both), so there's no
+    live double-grant risk today; the risk is purely theoretical until
+    Phase 2's quick-log row exists and calls them, at which point each
+    call still only grants once. Sleep logs correctly grant nothing (not
+    in the spec's berries table, and the reference prototype has no
+    sleep-log UI at all) — confirmed by reading `addSleep` (`client.ts:
+    317-320`), no `addBerries` call present.
+  - **Scene shop** (`buyScene`/`setScene`, `client.ts:455-472`, called
+    from `me.tsx`'s `onScenePress`): buying reads `owned_scenes` fresh via
+    `getBearcat()` (not from stale client state), parses it, appends the
+    new id only if not already present, and writes back
+    `JSON.stringify(owned)` — no corruption path found. A scene can only
+    ever be equipped via `setScene`, which `me.tsx` only calls for ids
+    already in the local `owned` array; the unowned branch always goes
+    through `buyScene` first, which itself sets `scene = id` as part of
+    the same purchase write — matching
+    `reference/bearcat_planner.jsx:1147-1158`'s `buy()` exactly (buying
+    auto-equips, same as the original). No path exists in the UI to equip
+    an unowned scene.
+  - **Design rules**: grepped `money.tsx`/`me.tsx`/`client.ts` for
+    red/danger/warning/error/guilt/shame/behind/fail — no real hits (the
+    grep noise was all `reduce`/`error`-free false positives, unlike
+    Phase 4's "meaSURED" near-miss there was nothing here at all). No
+    completion percentage anywhere. Mochi's pose on Me
+    (`me.tsx:67-73`'s `catMood`) is computed from `moodForToday()` fed
+    only `todayMood`/`todayWin`/`hasDoneAnyPriority`/
+    `hasLoggedAnyHabitToday`/`weekScore` — confirmed none of money, sleep,
+    notes, or scene data is threaded into that call anywhere in the file,
+    which is exactly what CLAUDE.md rule 5 requires. Empty states invite
+    ("Nothing here yet. Jot down a thought whenever one shows up." for
+    Notes, "Log something below and it appears here." for Money's
+    category bars) rather than scold.
+  - **Year-in-pixels grid** (`me.tsx:87-99`): 371 cells from
+    `startOfWeek(jan1)`, column-major grouping (`cells.slice(c*7, c*7+7)`
+    for 53 columns) to stand in for the reference's CSS
+    `grid-auto-flow: column`, `inYear` opacity-0.25 padding — hand-traced
+    against `reference/bearcat_planner.jsx:1128-1134` and it's a faithful
+    port, not just visually similar.
+  Three non-blocking nitpicks logged in `TASKS.md` instead of fixed
+  (nothing here crashes or breaks a design rule):
+  1. Me's "Time you've given yourself" card shows Focus/Breathing but
+     drops the reference's third "Moving" (workout minutes) stat
+     (`reference/bearcat_planner.jsx:1201-1204`) — defensible (workout
+     time is already shown via the HealthKit "Exercise today" widget on
+     the same screen, and the manual `workouts` table has no reader
+     function since nothing writes to it yet), but it's an undisclosed
+     deviation from the reference, not called out in the build handoff.
+  2. Money's empty-category-bars copy changed from the reference's "Log
+     something from Today and it appears here" to "Log something below
+     and it appears here" (`money.tsx:117`) — correct given the entry
+     form now lives on this screen rather than Today's still-unbuilt
+     quick-log row, but also undisclosed as a deliberate change.
+  3. `#5FB595` (the "In" stat's green) is hardcoded directly in
+     `money.tsx:102` rather than added to `tokens.ts` as a named
+     constant, even though it's semantically reused from an existing
+     hardcoded occurrence in `me.tsx:192`'s Health widget — matches the
+     reference's literal `.bc-stat.mint{color:#5FB595}` value exactly, so
+     it's not a stray invention, just ungrouped; worth promoting to a
+     token if a third use ever shows up.
 - **2026-08-13** — Built Phase 5: the Money screen and the rest of the Me
   screen, the last of the three requested phases. No Node.js in this
   sandbox either (checked `which node`/`npm`/`npx`/`nvm` myself, all
