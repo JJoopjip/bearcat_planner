@@ -85,8 +85,10 @@ mentions. Not started; low priority until earlier phases are solid.
       the known-free way to get Node — see README). This is the single
       highest-value next step regardless of which feature phase is next:
       catching type errors and typos before building more on top of them.
-- [ ] EAS Build / Apple Developer Program setup is deliberately deferred
-      (costs money) — see README's one-time setup section. The GitHub
+- [ ] Trying the app on-device uses local `expo prebuild` + `expo run:ios`
+      (Mac + Xcode + free Apple ID), not Expo Go — see README. EAS Build /
+      a paid Apple Developer Program membership are deliberately deferred
+      until distributing beyond your own device is needed. The GitHub
       Actions workflow is manual-trigger-only (`workflow_dispatch`) so it
       doesn't fail automatically on every push in the meantime.
 - [ ] Add a `.github/workflows/` CI job that at least runs `tsc --noEmit`

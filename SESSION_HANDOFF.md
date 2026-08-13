@@ -41,13 +41,15 @@ inherits its unverified-ness.
   and is how commits got pushed. If you're in a similarly bare
   environment, GitHub Codespaces on this repo is the known-working way to
   get a Node.js environment for free — see README.
-- Real HealthKit data (steps/heart rate/exercise/sleep on the Me screen)
-  can **only** be tested in a real device build via EAS, which needs a
-  paid Apple Developer Program membership ($99/yr). This is a deliberate,
-  user-acknowledged deferral, not an oversight — don't "fix" it by trying
-  to make Health work in Expo Go, it can't (custom native module).
-- Expo Go (free) can run everything else live on a real phone right now,
-  once someone has `npx expo start` running somewhere with Node.
+- **This project intentionally does not use Expo Go.** Trying the app —
+  including the Apple Health widgets, which Expo Go can't load at all
+  (`react-native-health` is a native module) — is done via
+  `npx expo prebuild -p ios` + `npx expo run:ios --device`, run from a Mac
+  with Xcode. A free Apple ID is enough to install and run on your own
+  device (7-day re-signing, no cost). See README's "Running it on your
+  phone" section. A paid Apple Developer Program membership ($99/yr) is
+  only needed later, for distributing to other testers (TestFlight/EAS),
+  not for trying it yourself.
 
 ## Reference material (read-only, don't edit)
 

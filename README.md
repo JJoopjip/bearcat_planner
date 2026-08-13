@@ -8,24 +8,32 @@ artifact for the interaction reference; this project ports that faithfully
 to native, backed by on-device SQLite, with real Apple Health widgets
 (steps, heart rate, workouts, sleep).
 
-## Running it locally (free, no build, no account)
+## Running it on your phone (no Expo Go)
+
+This project deliberately does not use Expo Go for trying the app — instead
+it's built as a standalone app via Expo's **prebuild** (bare workflow), run
+straight through Xcode. You need a Mac with Xcode installed.
 
 1. Install dependencies: `npm install` (creates `package-lock.json` the
    first time, since this repo was scaffolded without Node.js available).
-2. Start the dev server: `npx expo start`.
-3. Install the **Expo Go** app (free, App Store / Play Store) on your phone,
-   then scan the QR code from the terminal/browser to open the app.
+2. Generate the native project: `npx expo prebuild -p ios`. This creates an
+   `ios/` folder with a real Xcode project — commit it or regenerate it as
+   needed, it's derived from `app.json` and the Expo plugins already
+   configured there.
+3. Connect your iPhone via USB (or use a paired Wi-Fi connection in Xcode),
+   then run: `npx expo run:ios --device`. Xcode will prompt you to sign in
+   with your Apple ID the first time; a free Apple ID is enough to install
+   and run on your own device for 7 days (Xcode re-signs it automatically
+   each time you rebuild, no App Store review, no cost).
+4. The app installs and launches directly on your phone — this includes the
+   Apple Health widgets (steps, heart rate, workouts, sleep), since
+   `react-native-health` is a native module that only works in this kind of
+   build, never under Expo Go.
 
-This is entirely free and needs no Expo account, no Apple Developer
-Program, and no GitHub Actions — it's the fastest way to try the app on a
-real device.
-
-**Caveat:** the Apple Health widgets (steps, heart rate, workouts, sleep)
-use `react-native-health`, a native module Expo Go can't load, so that one
-screen won't work under Expo Go. Everything else runs normally. Real Health
-data requires a custom dev-client build via EAS, which needs a paid Apple
-Developer Program ($99/yr) — that's a later step, not needed to try the
-rest of the app now.
+A paid Apple Developer Program membership ($99/yr) is only needed later, if
+you want to distribute the app beyond your own device (TestFlight, App
+Store, or EAS cloud builds for other testers) — not for trying it yourself
+on your own phone via a cable.
 
 ## Project layout
 
