@@ -41,6 +41,7 @@ function createWebStore(): Db {
   const sleepLog: SleepRow[] = [];
   const notes: NoteRow[] = [];
   const reflections = new Map<string, ReflectionRow>();
+  const inbox: InboxRow[] = [];
 
   return {
     async getFirstAsync<T>(sql: string, params: unknown = []): Promise<T | null> {
@@ -82,6 +83,8 @@ function createWebStore(): Db {
       }
       // Real query is "ORDER BY date DESC".
       if (sql.includes("FROM notes")) return [...notes].sort((a, b) => (b.date > a.date ? 1 : b.date < a.date ? -1 : 0)) as unknown as T[];
+      // Real query is "ORDER BY rowid" — insertion order already matches.
+      if (sql.includes("FROM inbox")) return inbox as unknown as T[];
       return [];
     },
     async runAsync(sql: string, params: unknown = []): Promise<any> {
@@ -156,6 +159,12 @@ function createWebStore(): Db {
       } else if (sql.startsWith("INSERT INTO reflections")) {
         const [weekKey, proud, learned, next] = p;
         reflections.set(weekKey, { week_key: weekKey, proud, learned, next });
+      } else if (sql.startsWith("INSERT INTO inbox")) {
+        const [id, text] = p;
+        inbox.push({ id, text });
+      } else if (sql.startsWith("DELETE FROM inbox")) {
+        const idx = inbox.findIndex((r) => r.id === p[0]);
+        if (idx !== -1) inbox.splice(idx, 1);
       }
       // workouts inserts: still a no-op — nothing in this file reads workouts
       // back yet (the Me screen's Health widget is a separate HealthKit read,
@@ -199,6 +208,7 @@ export type MoodRow = { date: string; value: number };
 export type SleepRow = { id: string; date: string; hours: number; quality: "rough" | "okay" | "good" };
 export type NoteRow = { id: string; date: string; text: string };
 export type ReflectionRow = { week_key: string; proud: string; learned: string; next: string };
+export type InboxRow = { id: string; text: string };
 
 export async function getBearcat(): Promise<BearcatRow> {
   const db = await getDb();
@@ -469,4 +479,23 @@ export async function buyScene(id: string, cost: number): Promise<boolean> {
 export async function setScene(id: string | null): Promise<void> {
   const db = await getDb();
   await db.runAsync("UPDATE bearcat SET scene = ? WHERE id = 1", [id]);
+}
+
+// ---- Brain dump inbox (Today's "Dump" quick-log sheet) ----
+// No berries — parking a thought isn't an action worth rewarding, it's
+// just getting it out of the way so "three things, at most" stays honest.
+
+export async function getInbox(): Promise<InboxRow[]> {
+  const db = await getDb();
+  return db.getAllAsync<InboxRow>("SELECT * FROM inbox ORDER BY rowid");
+}
+
+export async function addInboxItem(id: string, text: string): Promise<void> {
+  const db = await getDb();
+  await db.runAsync("INSERT INTO inbox (id, text) VALUES (?, ?)", [id, text]);
+}
+
+export async function removeInboxItem(id: string): Promise<void> {
+  const db = await getDb();
+  await db.runAsync("DELETE FROM inbox WHERE id = ?", [id]);
 }

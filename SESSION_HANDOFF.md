@@ -1,21 +1,20 @@
 # SESSION_HANDOFF.md
 
-**Last updated:** 2026-08-13, by a Claude Code session that QA'd Phase 5
-(chat-based, no Node.js available in its environment — see "Environment
-constraints" below). Read `CLAUDE.md` first if you haven't; it explains
-the hygiene rule that keeps this file current.
+**Last updated:** 2026-08-13, by a Claude Code session that built and QA'd
+Phase 2's remaining piece, the "as it happens" quick-log row (chat-based,
+no Node.js available in its environment — see "Environment constraints"
+below). Read `CLAUDE.md` first if you haven't; it explains the hygiene
+rule that keeps this file current.
 
 ## tl;dr for the next agent
 
-**Phases 3, 4, and 5 — all three requested this session — are now built
-AND QA'd** (verdicts: Phase 3 pass, Phase 4 pass with notes, Phase 5 pass
-with notes; see the Handoff log below for specifics of each). Phase 2
-(Today screen) is still **half** done — the daily core works, but the "as
-it happens" quick-log row (focus timer, meditation+sleep log, workout log,
-money entry, brain-dump inbox) doesn't exist yet, even though the spec
-calls it out as part of Phase 2; Money entries and manual sleep logs can
-currently only be added from their own full screens (Money, Me), not from
-a quick-log sheet on Today.
+**All five feature phases (1–5) are now built.** Phase 2 (Today screen) is
+now fully done: the daily core (from earlier sessions) plus this session's
+"as it happens" quick-log row — Focus/Breathe/Workout/Money/Dump buttons
+opening bottom sheets (`src/components/QuickLog.tsx`), with manual sleep
+logging folded into the Breathe sheet as a mode toggle. Phases 3, 4, 5 were
+already built+QA'd pass/pass-with-notes in the prior session. Phase 6
+(notifications) is the only phase not started.
 
 **The single highest-priority next step for whoever picks this up:**
 nothing in this repo has ever actually been run — no session that's
@@ -36,6 +35,7 @@ inherits its risk until someone does. Full detail in `TASKS.md`.
 | Expo/TS project setup, `expo-router` tabs, SQLite schema | Written | Not run — see below |
 | Mochi component, all 16 poses, precedence logic | Written | Not run |
 | Today: intention, mood, priorities, habits, one small win | Written, persists to SQLite | Not run |
+| Today: "as it happens" quick-log row (Focus/Breathe/Workout/Money/Dump sheets, sleep folded into Breathe) | Written, persists to SQLite (and web demo store) | Not run |
 | Me: Apple Health widgets (steps/HR/exercise/sleep) | Written | Not run, and can only ever be tested on a real device with a paid Apple account (see README) |
 | Habits screen (Phase 3) | Written, persists to SQLite (and to the web demo's in-memory store) | Not run |
 | Quests screen (Phase 4) | Written, QA'd (pass with notes), persists to SQLite (and to the web demo's in-memory store) | Not run |
@@ -88,43 +88,132 @@ inherits its unverified-ness.
 
 ## What's next
 
-All three requested feature phases (3, 4, 5) are now built. See
-`TASKS.md` for the full backlog, but in priority order as of this
-handoff, this is now genuinely cross-cutting work, not another feature
-phase:
+All five feature phases (1–5) are now built. See `TASKS.md` for the full
+backlog, but in priority order as of this handoff:
 
 1. **Get the project actually running, for the first time ever, on a real
    Node.js machine (GitHub Codespaces is the known-free option) or a Mac
    with Xcode for the iOS side.** Every phase so far — 1 through 5 — has
    been written by hand without `npm install`/`tsc --noEmit`/`expo start`
-   ever running against this code once. That includes today's Phase 5
-   work: `getRecentSleep`'s `LIMIT ?` parameter, the `ON CONFLICT` upsert
-   in `setReflection`, and the whole year-in-pixels grid's column/row
-   math are exactly the kind of thing that looks right by eye but needs
-   a real `tsc` pass and a real render to be sure of. Run `tsc --noEmit`
-   first (fast, catches typos/type mismatches) before spending time on
-   the device/simulator step.
+   ever running against this code once, across six sessions now. Run
+   `tsc --noEmit` first (fast, catches typos/type mismatches) before
+   spending time on the device/simulator step. This is still the single
+   highest-leverage thing anyone touching this repo could do next.
 2. On-device/simulator specifically, check: the Habits screen's
    `PanResponder` slider, Quests' `QuestPath` (View-based winding path),
-   and now Phase 5's year-in-pixels grid (53 `View` columns of 7 cells
-   each, meant to read as a dense grid — untested whether the cells end
-   up too small/cramped on an actual phone width) and the scene shop's
-   circular backdrops behind Mochi (built in an earlier phase, but never
-   actually seen rendered until now that the shop UI to trigger them
-   exists).
-3. Build the Today screen's "as it happens" quick-log row + bottom sheets
-   (finishes Phase 2). Money entries and manual sleep logs currently only
-   have a home on their own full screens (Money, Me) — the spec's
-   original intent was quick one-tap sheets from Today too. Once that
-   row exists, `addWorkout`/`addSession`'s embedded berries grants
-   (added this session) will start firing without any further wiring.
-4. ~~A QA pass against `QUALITY_METRICS.md` for Phase 5~~ — **done**, see
-   the Handoff log entry below (verdict: pass with notes). All three
-   feature phases requested this session are now built and QA'd; from
-   here it's cross-cutting work only (items 1-3 above).
+   Phase 5's year-in-pixels grid and scene-shop backdrops, and now this
+   session's `Modal`-based bottom sheets in `QuickLog.tsx` — specifically
+   whether the countdown timer's `setInterval`-recreated-every-tick
+   pattern behaves smoothly on-device, and whether tapping the sheet's
+   scrim vs. its body correctly distinguishes close-vs-no-op (relies on
+   RN's touch responder system, which is untestable without a device).
+3. Phase 6 (notifications) is the only remaining unbuilt feature phase —
+   low priority per `TASKS.md` until the above verification work is done.
+4. ~~Build the Today screen's "as it happens" quick-log row~~ — **done**
+   this session, see the Handoff log entry below.
 
 ## Handoff log
 
+- **2026-08-13** — Built and QA'd Phase 2's remaining piece: the "as it
+  happens" quick-log row on Today. New file `src/components/QuickLog.tsx`
+  (kept separate from `index.tsx` rather than inline, since it's five
+  sheets' worth of UI) exports `QuickRow` (the 5-button row — Focus/
+  Breathe/Workout/Money/Dump, using the `reading`/`sleeping`/`exercising`/
+  `drink`/`thinking` Mochi poses the spec assigns them) and `TimerSheet`/
+  `WorkoutSheet`/`MoneySheet`/`InboxSheet`, ported from the reference's
+  same-named components almost line-for-line (same `OPTS` arrays for
+  focus/meditation minutes, same countdown mechanics, same "Stop early —
+  no harm done" no-penalty exit, same workout/money/inbox form fields and
+  copy). Sheets are built on core RN `Modal` (`transparent` +
+  `animationType="slide"`, a scrim `Pressable` behind a sheet `Pressable`
+  that stops propagation) — no new dependency, continuing the same
+  substitution pattern as Habits' hand-built slider, Quests' `QuestPath`,
+  and Money's category bars (all cases where the spec wanted a component
+  this project doesn't have a library for, and adding one wasn't
+  approved).
+  **Sleep log folded into the Breathe sheet**: this is this session's own
+  design decision, not literally present in
+  `reference/bearcat_planner.jsx` (which has no sleep-log UI at all, only
+  a HealthKit-style workout paste-import) — the spec's quick-log row only
+  has five slots and five assigned poses, and manual sleep entry doesn't
+  get its own. Since Breathe (meditation) and sleep are both "winding
+  down" moments, `TimerSheet` shows a "Timer / Log sleep" segmented toggle
+  when `kind === "meditate"` (never for `kind === "focus"`); "Log sleep"
+  swaps in the same hours + rough/okay/good-quality-chips form the Me
+  screen's Sleep card already uses, calling the existing `addSleep`
+  (still correctly grants no berries — confirmed against the spec's
+  berries table again, same finding as Phase 5's QA).
+  **Bug found and fixed during the build** (not a separate QA pass — this
+  was code review of my own diff before considering it done):
+  `TimerSheet` is one mounted React component instance shared between the
+  Focus and Breathe quick-log buttons — the `Modal` only toggles
+  `visible`, it doesn't unmount, so component state persists across
+  reopenings with a different `kind` prop. Two consequences, both fixed:
+  (1) if a user picked "Log sleep" mode inside Breathe, closed the sheet,
+  then opened Focus next, the raw `mode` state would still read `"sleep"`
+  and the Focus sheet would incorrectly render the sleep-log form instead
+  of a timer — fixed with `effectiveMode = kind === "meditate" ? mode :
+  "timer"`, so Focus can never see sleep mode regardless of leftover
+  state. (2) `mins`' `useState` initializer only runs once on mount, so
+  after visiting Breathe (default 5 min) and then opening Focus, the
+  minute options would start on 5 instead of Focus's own default 25 —
+  fixed with a reset-on-open `useEffect` (`[open]` dependency) that snaps
+  `mode` back to `"timer"` and `mins` back to the correct per-kind default
+  every time the sheet transitions from closed to open. Also added: an
+  effect that force-stops the countdown (`setLeft(null)`) if the sheet is
+  closed mid-run, so a dismissed timer doesn't keep ticking (and
+  eventually auto-log a session) in the background.
+  **`src/db/client.ts` additions**: `getInbox`, `addInboxItem`,
+  `removeInboxItem` — the last remaining schema table (`inbox`) without
+  client functions. No berries (parking a thought isn't a rewarded
+  action, matching the spec's berries table and the reference's own
+  inbox, which doesn't call `berries()` either). Matching
+  `createWebStore()` branches added: `getAllAsync`'s `FROM inbox` returns
+  the array as-is (real query is `ORDER BY rowid`, i.e. insertion order,
+  same as `getHabits`/`getPriorities` — no re-sort needed, unlike
+  evidence/money/notes/sleep_log which needed the `ORDER BY date DESC`
+  fix in earlier phases' QA passes), and `runAsync` gained `INSERT INTO
+  inbox`/`DELETE FROM inbox` branches, checked against every existing
+  `startsWith(...)` prefix in both directions for collisions (none — no
+  other branch starts with or is a prefix of either literal string).
+  **`app/(tabs)/index.tsx` changes**: added `inbox` and `sheet` state,
+  `getInbox()` added to the `Promise.all` in `load()`, a new "As it
+  happens" card rendering `QuickRow`, and the four sheets mounted after
+  `</ScrollView>` (inside `SafeAreaView`, matching where the reference
+  mounts its sheets — siblings of the scrollable content, not nested
+  inside it, so they can overlay the whole screen). Added `refreshBerries`
+  (re-fetches the berries count without granting) alongside the existing
+  `grantBerries` (grants then re-fetches) — needed because `addWorkout`/
+  `addSession` already call `addBerries` internally (wired that way back
+  in the Phase 5 session specifically so this session wouldn't have to
+  remember to grant separately); calling `grantBerries` from these sheets
+  instead would have double-granted.
+  **Design rules, checked against `CLAUDE.md` directly**: `grep -ni
+  "red\|danger\|warning\|guilt\|shame\|behind\|fail"` on both new/changed
+  files came back clean (only false positives on the words "shared" and
+  a code comment's "Focus / Breathe... shared timer engine"); no
+  completion percentage anywhere in the new UI; Workout/Money/Inbox
+  copy matches the reference verbatim ("Minutes and type only. No weight,
+  no calories — effort is the point.", "Park it here so today stays to
+  three things.", "Empty, which is a good sign.", "Stop early — no harm
+  done"); tapping an inbox row deletes it with no confirmation dialog and
+  no warning styling, matching the reference's own "dump and clear"
+  affordance exactly.
+  Verified by hand (no Node.js — see Environment constraints, unchanged
+  from every prior session): balanced braces/parens/brackets confirmed
+  programmatically for `index.tsx`, `QuickLog.tsx`, `client.ts` (all
+  even); every new `client.ts` query's columns checked against
+  `schema.ts`'s `inbox` table (`id`, `text` — matches); `addSession`'s
+  call signature (`id, date, kind, minutes, tag`) checked against how
+  `TimerSheet` calls it, including passing `null` for `tag` on meditation
+  sessions (schema's `sessions.tag` column is nullable, no `NOT NULL`).
+  Not verified, flagged in "What's next" above rather than blocking: the
+  actual on-device feel of the `Modal` bottom sheets (slide animation,
+  scrim-tap-to-close, whether the countdown UI reads clearly at real
+  phone size) — first time this repo has used `Modal` at all, so there's
+  no prior on-device experience with it to lean on, unlike the
+  `PanResponder`/View-based substitutions in earlier phases which at
+  least reuse patterns already spot-checked once.
 - **2026-08-13** — Added `IMPROVEMENT_ADVICE.md`: a standalone market/
   competitive research + strategic advice doc for the owner (not a build
   log, doesn't affect the priorities above — the "get it running on real

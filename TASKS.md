@@ -17,23 +17,63 @@ Check items off as they're verified working, not just written — see
       pose ever looks wrong on-device — it's cheap and was cut for time,
       not because it's a bad idea.
 
-## Phase 2 — Today screen — partially done
+## Phase 2 — Today screen — done (unverified, no Node in this session)
 
 - [x] Daily core: intention, mood check-in (sticker buttons), 3 priorities,
       habit chips (done/cozy), one small win — all persisted to SQLite
 - [x] Pose-selection precedence logic (`src/lib/mood.ts`)
-- [ ] **"As it happens" quick-log row is NOT built yet.** The spec calls
-      for a horizontal row of sticker buttons (Focus / Breathe / Workout /
-      Money / Dump) opening bottom sheets — focus+meditation timer,
-      workout log, money entry, brain-dump inbox, and the sleep-log tab
-      folded into the Breathe sheet. None of this exists in
-      `app/(tabs)/index.tsx` yet. The web demo (see
-      `SESSION_HANDOFF.md` for its URL) has this fully built and validated
-      in JS — port its interaction logic, don't redesign it.
-- [ ] `src/db/client.ts` has no read/write functions yet for: money,
-      sessions (partially — `addSession`/`getMinutesByKind` exist but no
-      list reader), sleep_log (write-only, no reads), notes, inbox,
-      reflections. Add these alongside the sheets that need them.
+- [x] **"As it happens" quick-log row built**, in a new
+      `src/components/QuickLog.tsx` (not inline in `index.tsx`, to keep
+      that file from ballooning): `QuickRow` (5 buttons: Focus/Breathe/
+      Workout/Money/Dump, `reading`/`sleeping`/`exercising`/`drink`/
+      `thinking` Mochi poses per the spec) plus `TimerSheet` (shared
+      focus+meditation engine, ported from the reference's `TimerSheet`
+      almost line-for-line — same OPTS arrays, same countdown-via-
+      `setInterval` re-created every tick pattern, "Stop early — no harm
+      done" ghost button that logs nothing), `WorkoutSheet`, `MoneySheet`,
+      `InboxSheet`. All five open as a bottom sheet built on core RN
+      `Modal` (`transparent` + `animationType="slide"`, no new dependency,
+      same substitution philosophy as Habits' slider/Quests' path/Money's
+      bars). Wired into `app/(tabs)/index.tsx` via a `sheet` state var and
+      a `refreshBerries()` helper (separate from `grantBerries`, since
+      `addWorkout`/`addSession` already grant berries themselves — calling
+      `grantBerries` too would double-grant).
+- [x] **Sleep log folded into the Breathe sheet** (this session's own
+      design call, not literally in the reference JSX, which has no
+      sleep-log UI at all — see `SESSION_HANDOFF.md`'s reasoning): when
+      `kind === "meditate"`, `TimerSheet` shows a "Timer / Log sleep"
+      segmented toggle above its content; "Log sleep" swaps in the same
+      hours+quality-chips form the Me screen's Sleep card already uses,
+      calling the existing `addSleep` (still grants no berries, per the
+      Phase 5 QA's finding that it's correctly absent from the spec's
+      berries table). "Timer" (default) is the focus/meditation countdown.
+      The Focus sheet (`kind === "focus"`) never shows the toggle.
+- [x] `src/db/client.ts` gained the last missing reads: `getInbox`,
+      `addInboxItem`, `removeInboxItem` (money/sessions/sleep_log/notes/
+      reflections reads already existed from Phase 5). Matching
+      `createWebStore()` branches added (seed empty, `ORDER BY rowid` so
+      insertion order already matches, same pattern as `getHabits`/
+      `getPriorities`).
+- [ ] Not run — see Environment constraints, no Node.js this session
+      either. `tsc --noEmit` could not be executed; balanced-braces check
+      done programmatically instead (`index.tsx`, `QuickLog.tsx`,
+      `client.ts` all came out even).
+- [x] **QA pass done** (2026-08-13, see `SESSION_HANDOFF.md`) — verdict
+      pass with one bug found and fixed during the build itself (not a
+      separate pass): `TimerSheet` is one mounted component instance
+      shared between the Focus and Breathe quick-log buttons (`Modal` just
+      toggles `visible`), so without a fix, picking "Log sleep" inside
+      Breathe and then opening Focus next would have shown the sleep-log
+      form inside the Focus sheet instead of the timer. Fixed with an
+      `effectiveMode` that forces `"timer"` whenever `kind !== "meditate"`,
+      plus a reset-on-open effect so `mins` snaps back to each kind's
+      default (25 for focus, 5 for meditate) instead of leaking the other
+      kind's last-picked value. Still worth an on-device check like every
+      other unverified phase: the bottom-sheet `Modal` slide-up animation,
+      whether the countdown auto-closes cleanly, and whether tapping the
+      scrim vs. the sheet body correctly distinguishes close-vs-no-op on a
+      real touch screen (relies on RN's responder system rather than DOM
+      event bubbling, which is untestable without a device).
 
 ## Phase 3 — Habits screen — done (unverified, no Node in this session)
 

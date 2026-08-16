@@ -3,13 +3,15 @@ import { View, Text, TextInput, Pressable, StyleSheet, ScrollView } from "react-
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
 import { Mochi } from "@/components/Mochi";
+import { QuickRow, TimerSheet, WorkoutSheet, MoneySheet, InboxSheet, type QuickSheetKey } from "@/components/QuickLog";
 import { colors, moodPoses, moodColors } from "@/theme/tokens";
 import { dkey, prettyDate, uid, weekDays } from "@/lib/dates";
 import { moodForToday } from "@/lib/mood";
 import {
   getBearcat, addBerries, getIntention, setIntention, getMood, setMood, getWin, setWin,
   getPriorities, addPriority, togglePriority, getHabits, getHabitLogForRange, setHabitLog,
-  type HabitRow, type PriorityRow, type HabitLogRow,
+  getInbox,
+  type HabitRow, type PriorityRow, type HabitLogRow, type InboxRow,
 } from "@/db/client";
 
 const today = dkey();
@@ -23,10 +25,12 @@ export default function TodayScreen() {
   const [newPriority, setNewPriority] = useState("");
   const [habits, setHabits] = useState<HabitRow[]>([]);
   const [habitLog, setHabitLogState] = useState<HabitLogRow[]>([]);
+  const [inbox, setInboxState] = useState<InboxRow[]>([]);
+  const [sheet, setSheet] = useState<QuickSheetKey>(null);
 
   const load = useCallback(async () => {
     const week = weekDays();
-    const [bc, intentionText, moodVal, winText, pri, hb, log] = await Promise.all([
+    const [bc, intentionText, moodVal, winText, pri, hb, log, ib] = await Promise.all([
       getBearcat(),
       getIntention(today),
       getMood(today),
@@ -34,6 +38,7 @@ export default function TodayScreen() {
       getPriorities(today),
       getHabits(),
       getHabitLogForRange(week[0], week[6]),
+      getInbox(),
     ]);
     setBerriesCount(bc.berries);
     setIntentionText(intentionText);
@@ -42,6 +47,7 @@ export default function TodayScreen() {
     setPriorities(pri);
     setHabits(hb);
     setHabitLogState(log);
+    setInboxState(ib);
   }, []);
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
@@ -64,6 +70,14 @@ export default function TodayScreen() {
 
   async function grantBerries(n: number) {
     await addBerries(n);
+    const bc = await getBearcat();
+    setBerriesCount(bc.berries);
+  }
+
+  // For sheets whose db.client function already grants berries itself
+  // (addWorkout, addSession) — just re-pull the count rather than granting
+  // a second time.
+  async function refreshBerries() {
     const bc = await getBearcat();
     setBerriesCount(bc.berries);
   }
@@ -219,7 +233,21 @@ export default function TodayScreen() {
             multiline
           />
         </Card>
+
+        <Card title="As it happens" hint="only when it happens">
+          <QuickRow onPick={setSheet} />
+        </Card>
       </ScrollView>
+
+      <TimerSheet
+        open={sheet === "timer" || sheet === "meditate"}
+        kind={sheet === "meditate" ? "meditate" : "focus"}
+        onClose={() => setSheet(null)}
+        onLogged={refreshBerries}
+      />
+      <WorkoutSheet open={sheet === "workout"} onClose={() => setSheet(null)} onLogged={refreshBerries} />
+      <MoneySheet open={sheet === "money"} onClose={() => setSheet(null)} onLogged={refreshBerries} />
+      <InboxSheet open={sheet === "inbox"} onClose={() => setSheet(null)} inbox={inbox} onChange={setInboxState} />
     </SafeAreaView>
   );
 }
