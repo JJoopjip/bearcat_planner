@@ -6,20 +6,24 @@ import { Mochi } from "@/components/Mochi";
 import { QuickRow, TimerSheet, WorkoutSheet, MoneySheet, InboxSheet, type QuickSheetKey } from "@/components/QuickLog";
 import { colors, moodPoses, moodColors } from "@/theme/tokens";
 import { dkey, prettyDate, uid, weekDays } from "@/lib/dates";
-import { moodForToday } from "@/lib/mood";
+import { moodForToday, moodDayStats } from "@/lib/mood";
 import {
-  getBearcat, addBerries, getIntention, setIntention, getMood, setMood, getWin, setWin,
+  getBearcat, addBerries, setBearcatName, getIntention, setIntention, getMood, getWin, setWin,
+  getMoodLog, addMoodCheckIn,
   getPriorities, addPriority, togglePriority, getHabits, getHabitLogForRange, setHabitLog,
   getInbox,
-  type HabitRow, type PriorityRow, type HabitLogRow, type InboxRow,
+  type BearcatRow, type HabitRow, type PriorityRow, type HabitLogRow, type InboxRow, type MoodLogRow,
 } from "@/db/client";
 
 const today = dkey();
 
 export default function TodayScreen() {
   const [berries, setBerriesCount] = useState(12);
+  const [bearcat, setBearcatState] = useState<BearcatRow | null>(null);
+  const [nameInput, setNameInput] = useState("Mochi");
   const [intention, setIntentionText] = useState("");
   const [mood, setMoodValue] = useState<number | null>(null);
+  const [moodLog, setMoodLogState] = useState<MoodLogRow[]>([]);
   const [win, setWinText] = useState("");
   const [priorities, setPriorities] = useState<PriorityRow[]>([]);
   const [newPriority, setNewPriority] = useState("");
@@ -30,10 +34,11 @@ export default function TodayScreen() {
 
   const load = useCallback(async () => {
     const week = weekDays();
-    const [bc, intentionText, moodVal, winText, pri, hb, log, ib] = await Promise.all([
+    const [bc, intentionText, moodVal, ml, winText, pri, hb, log, ib] = await Promise.all([
       getBearcat(),
       getIntention(today),
       getMood(today),
+      getMoodLog(today),
       getWin(today),
       getPriorities(today),
       getHabits(),
@@ -41,8 +46,11 @@ export default function TodayScreen() {
       getInbox(),
     ]);
     setBerriesCount(bc.berries);
+    setBearcatState(bc);
+    setNameInput(bc.name);
     setIntentionText(intentionText);
     setMoodValue(moodVal);
+    setMoodLogState(ml);
     setWinText(winText);
     setPriorities(pri);
     setHabits(hb);
@@ -51,6 +59,8 @@ export default function TodayScreen() {
   }, []);
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
+
+  const moodStats = moodDayStats(moodLog.map((m) => m.value));
 
   const week = weekDays();
   let need = 0, hit = 0;
@@ -83,14 +93,26 @@ export default function TodayScreen() {
   }
 
   async function onPickMood(value: number) {
-    const first = mood === null;
-    setMoodValue(value);
-    await setMood(today, value);
+    const first = moodLog.length === 0;
+    const id = uid();
+    await addMoodCheckIn(id, today, value);
+    const [ml, dayVal] = await Promise.all([getMoodLog(today), getMood(today)]);
+    setMoodLogState(ml);
+    setMoodValue(dayVal);
     if (first) await grantBerries(1);
   }
 
   async function onBlurIntention() {
     await setIntention(today, intention);
+  }
+
+  async function onBlurName() {
+    const trimmed = nameInput.trim() || "Mochi";
+    setNameInput(trimmed);
+    if (bearcat && trimmed !== bearcat.name) {
+      await setBearcatName(trimmed);
+      setBearcatState({ ...bearcat, name: trimmed });
+    }
   }
 
   async function onBlurWin() {
@@ -139,7 +161,15 @@ export default function TodayScreen() {
           <Mochi pose={catMood} size={140} />
           <View style={styles.heroMeta}>
             <Text style={styles.eyebrow}>{prettyDate()}</Text>
-            <Text style={styles.h1}>Mochi</Text>
+            <TextInput
+              style={styles.h1Input}
+              value={nameInput}
+              onChangeText={setNameInput}
+              onBlur={onBlurName}
+              placeholder="Mochi"
+              placeholderTextColor={colors.inkSoft}
+              maxLength={20}
+            />
             <Text style={styles.berries}>{"\u{1F353}"} {berries} berries</Text>
             <View style={styles.ring}>
               <View style={[styles.ringFill, { width: `${Math.round(weekScore * 100)}%` }]} />
@@ -159,21 +189,26 @@ export default function TodayScreen() {
           />
         </Card>
 
-        <Card title="How are you?" hint="one tap">
+        <Card title="How are you?" hint="tap anytime, as often as you like">
           <View style={styles.moodRow}>
             {moodPoses.map((pose, i) => {
-              const on = mood === i + 1;
+              const on = moodLog.length > 0 && moodLog[moodLog.length - 1].value === i + 1;
               return (
                 <Pressable
                   key={pose}
                   onPress={() => onPickMood(i + 1)}
                   style={[styles.moodBtn, on && { backgroundColor: moodColors[i], transform: [{ translateY: -3 }, { scale: 1.06 }] }]}
                 >
-                  <Mochi pose={pose} size={40} mini />
+                  <Mochi pose={pose} size={52} mini />
                 </Pressable>
               );
             })}
           </View>
+          {moodStats && (
+            <Text style={styles.moodStats}>
+              {moodStats.percent}% today · {moodLog.length} check-in{moodLog.length === 1 ? "" : "s"}
+            </Text>
+          )}
         </Card>
 
         <Card title="Three things, at most" hint={`${priorities.length}/3`}>
@@ -270,7 +305,10 @@ const styles = StyleSheet.create({
   hero: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 16 },
   heroMeta: { flex: 1, marginLeft: 8 },
   eyebrow: { fontSize: 11, letterSpacing: 1.4, textTransform: "uppercase", color: colors.inkSoft, fontWeight: "700" },
-  h1: { fontSize: 26, fontWeight: "700", color: colors.ink },
+  h1Input: {
+    fontSize: 26, fontWeight: "700", color: colors.ink, padding: 0, marginTop: 1,
+    borderBottomWidth: 1, borderBottomColor: colors.pinkPale, borderStyle: "dashed", alignSelf: "flex-start",
+  },
   h2: { fontSize: 16, fontWeight: "700", color: colors.ink },
   berries: { fontSize: 13, color: colors.pinkDeep, fontWeight: "700", marginTop: 2 },
   ring: { height: 10, borderRadius: 99, backgroundColor: colors.pinkPale, marginVertical: 8, overflow: "hidden" },
@@ -286,7 +324,8 @@ const styles = StyleSheet.create({
   },
   area: { minHeight: 62, textAlignVertical: "top" },
   moodRow: { flexDirection: "row", gap: 8, justifyContent: "space-between" },
-  moodBtn: { flex: 1, aspectRatio: 1, borderRadius: 16, backgroundColor: colors.pixel, alignItems: "center", justifyContent: "center" },
+  moodBtn: { flex: 1, height: 78, borderRadius: 16, backgroundColor: colors.pixel, alignItems: "center", justifyContent: "center" },
+  moodStats: { fontSize: 12.5, color: colors.inkSoft, textAlign: "center", marginTop: 8 },
   row: {
     flexDirection: "row", alignItems: "center", gap: 11, backgroundColor: colors.cream,
     borderWidth: 1.5, borderColor: colors.pinkPale, borderRadius: 14, paddingHorizontal: 13, paddingVertical: 12,

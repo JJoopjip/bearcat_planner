@@ -1,20 +1,24 @@
 # SESSION_HANDOFF.md
 
-**Last updated:** 2026-08-13, by a Claude Code session that built and QA'd
-Phase 2's remaining piece, the "as it happens" quick-log row (chat-based,
-no Node.js available in its environment — see "Environment constraints"
-below). Read `CLAUDE.md` first if you haven't; it explains the hygiene
-rule that keeps this file current.
+**Last updated:** 2026-08-17, by a Claude Code session (chat-based, no
+Node.js available in its environment — see "Environment constraints"
+below) that made two small owner-requested changes to the Today screen:
+an editable bearcat name, and multiple-per-day weighted mood check-ins.
+Read `CLAUDE.md` first if you haven't; it explains the hygiene rule that
+keeps this file current.
 
 ## tl;dr for the next agent
 
-**All five feature phases (1–5) are now built.** Phase 2 (Today screen) is
-now fully done: the daily core (from earlier sessions) plus this session's
-"as it happens" quick-log row — Focus/Breathe/Workout/Money/Dump buttons
-opening bottom sheets (`src/components/QuickLog.tsx`), with manual sleep
-logging folded into the Breathe sheet as a mode toggle. Phases 3, 4, 5 were
-already built+QA'd pass/pass-with-notes in the prior session. Phase 6
-(notifications) is the only phase not started.
+**All five feature phases (1–5) are built**, plus this session's two
+Today-screen refinements (editable name, weighted multi-check-in mood).
+Phase 2 (Today screen) is fully done: the daily core, the "as it happens"
+quick-log row (`src/components/QuickLog.tsx`), and now editable naming +
+richer mood check-ins. Phases 3, 4, 5 were built+QA'd pass/pass-with-notes
+in an earlier session. Phase 6 (notifications) is the only phase not
+started. The owner has also asked for the Habits screen's habit icons to
+be swapped for Mochi sticker images instead of emoji — **explicitly on
+hold** until they upload more stickers; don't start it without checking
+whether that's landed (see "What's next").
 
 **The single highest-priority next step for whoever picks this up:**
 nothing in this repo has ever actually been run — no session that's
@@ -109,10 +113,103 @@ backlog, but in priority order as of this handoff:
    RN's touch responder system, which is untestable without a device).
 3. Phase 6 (notifications) is the only remaining unbuilt feature phase —
    low priority per `TASKS.md` until the above verification work is done.
-4. ~~Build the Today screen's "as it happens" quick-log row~~ — **done**
-   this session, see the Handoff log entry below.
+4. ~~Build the Today screen's "as it happens" quick-log row~~ — **done**,
+   see the Handoff log below.
+5. **On hold, owner-blocked, do not start without checking with the
+   owner first:** swap the Habits screen's per-habit emoji (`habits.tsx`,
+   the `chipEmoji` `Text` reading `h.emoji`) for Mochi sticker images. The
+   owner asked for this but said explicitly to wait until they upload more
+   stickers — the 16 poses in `assets/mochi/` are situational
+   (mood/activity poses), not generic per-habit icons, so this needs a new
+   asset set, not a reuse of the existing ones. Check `assets/mochi/` for
+   new files and ask the owner before starting.
+6. ~~Add an editable bearcat name, and let "How are you?" be checked in
+   more than once a day~~ — **done** this session, see the Handoff log
+   below. Not done as part of this: "more variation" in the mood poses
+   themselves — same as item 5, the owner said more stickers are coming
+   first.
 
 ## Handoff log
+
+- **2026-08-17** — Two owner-requested Today screen changes (chat session,
+  no Node.js — same caveat as every prior session, verified by hand/
+  programmatic brace-balance check on the four changed files, not
+  compiled).
+  **Editable bearcat name**: the hero's `Text style={styles.h1}>Mochi<`
+  was hardcoded — `bearcat.name` already existed in the schema and was
+  already read/displayed correctly on the Me screen (`me.tsx:274`'s
+  `${bearcat?.name ?? "Mochi"}'s corner`), just never editable and never
+  even read on Today. Swapped it for a `TextInput` (`h1Input` style,
+  matching `h1`'s size/weight, with a subtle dashed underline as the only
+  "this is tappable" affordance — no pencil icon, kept consistent with the
+  rest of the app's existing blur-to-save inputs like the intention/win
+  fields) that saves on blur via new `setBearcatName()` in `client.ts`
+  (`UPDATE bearcat SET name = ? WHERE id = 1`, plus a matching
+  `createWebStore()` branch). Falls back to "Mochi" if blurred empty.
+  **Weighted multi-check-in mood**: previously `moods` was one value per
+  day, overwritten on each tap, with a berries grant gated on "first tap
+  today" — re-tappable already, but framed as "one tap" (the card's old
+  hint text) and with no way to see more than today's single latest value.
+  The owner wants to check in as often as they like through the day and
+  see a running weighted read of the day, explicitly confirmed as: every
+  check-in scores 0/25/50/75/100 along the sad→love scale, and the day's
+  % is the plain average of every check-in so far (asked directly and
+  picked this over a binary positive/negative-share alternative — see
+  conversation, not recorded elsewhere).
+  Added a new `mood_log` table (`schema.ts`: `id/date/value/ts`, one row
+  per check-in, `idx_mood_log_date` index) that's purely additive — every
+  existing consumer of the single-value-per-day `moods` table (`getMood`/
+  `getAllMoods`, used by `moodForToday`'s pose precedence, the Me screen's
+  year-in-pixels grid, and Money's low-mood-vs-good-day insight) keeps
+  working unchanged, because `addMoodCheckIn()` (new, `client.ts`) inserts
+  the raw check-in into `mood_log` and then re-derives `moods`' row for
+  that date as the rounded weighted average via the new `moodDayStats()`
+  helper (`src/lib/mood.ts`) — so "today's mood" everywhere else in the
+  app is always the latest weighted summary, not just the latest tap.
+  `moodDayStats()` is also called from the Today screen itself to render
+  the live "45% today · 3 check-ins" line under the mood row (only shown
+  once there's at least one check-in; wording is descriptive, not framed
+  as a grade or target — see design-rule note below).
+  **Bigger icon**: `Mochi` in the mood row went from `size={40}` to
+  `size={52}`; `moodBtn`'s style changed from `aspectRatio: 1` (which
+  capped icon room to the row's per-button width, ~58px on a typical
+  screen) to a fixed `height: 78` so the taller icon has headroom
+  regardless of screen width, while width still divides evenly via
+  `flex: 1` same as before. **Not done**: "more variation" (more mood
+  poses) — the owner said more stickers are coming, so `moodPoses` in
+  `tokens.ts` (currently the fixed 5: sad/confused/happy/thumbsup/love)
+  was deliberately left untouched, same hold as the Habits icon item
+  below.
+  **Design-rule check**: the new "X% today" line is a self-reported
+  aggregate of the user's own check-ins, not a completion/outcome grade
+  the user doesn't control (design rule 6 is about the latter — habit/
+  quest completion, which this isn't), and it's framed the same
+  observational way as Money's existing mood-vs-spend insight, which the
+  Phase 5 QA already specifically checked against this same rule. No red,
+  no warning color, no judgment language in either new bit of copy
+  (`grep -ni "red|danger|warning|guilt|shame"` on all four changed files:
+  no real hits, only the pre-existing `scared` pose name in `mood.ts`).
+  Mochi's own pose (`catMood` in `index.tsx`) is unaffected by this
+  change — `moodForToday` only ever checked `!!s.todayMood`, so a day's
+  aggregate value continuing to be truthy after multiple check-ins doesn't
+  change its behavior.
+  **Habits icon → Mochi stickers**: **not started**, per the owner's own
+  explicit "wait after i upload more stickers." Logged as item 5 in
+  "What's next" above so it isn't lost, but there is nothing to review
+  here yet.
+  Verified by hand (no Node.js): balanced braces/parens/brackets
+  confirmed programmatically for `index.tsx`, `client.ts`, `schema.ts`,
+  `mood.ts` (all even); every new `client.ts` query's columns checked
+  against `schema.ts`'s new `mood_log` table; the new `createWebStore()`
+  `mood_log`/`name` branches checked for prefix collisions against every
+  existing `bearcat`/`moods` branch (`"UPDATE bearcat SET name = ?"` vs.
+  the three existing `"UPDATE bearcat SET ..."` branches, and
+  `"FROM mood_log"` vs. the existing `"FROM moods"` check — `mood_log`
+  and `moods` diverge at the 5th character, `_` vs. `s`, so neither
+  `.includes()` swallows the other). Not verified, same standing caveat as
+  every phase: the actual on-device feel (whether the dashed-underline
+  name field reads as "tap to edit" without a label, whether 52px icons
+  in a 78px-tall row look right on a real phone).
 
 - **2026-08-13** — Built and QA'd Phase 2's remaining piece: the "as it
   happens" quick-log row on Today. New file `src/components/QuickLog.tsx`

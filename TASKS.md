@@ -74,6 +74,21 @@ Check items off as they're verified working, not just written — see
       scrim vs. the sheet body correctly distinguishes close-vs-no-op on a
       real touch screen (relies on RN's responder system rather than DOM
       event bubbling, which is untestable without a device).
+- [x] **Editable bearcat name** (2026-08-17, owner-requested, not part of
+      the original phase plan): hero title is now a blur-to-save
+      `TextInput` instead of a hardcoded "Mochi", backed by new
+      `setBearcatName()` in `client.ts`. `bearcat.name` already existed in
+      the schema and was already displayed (read-only) on the Me screen.
+- [x] **Weighted multi-check-in mood** (2026-08-17, owner-requested): "How
+      are you?" can now be tapped more than once a day — every check-in is
+      logged to a new `mood_log` table and the day's `moods` value becomes
+      the rounded weighted average (0/25/50/75/100 per pose, averaged), via
+      new `addMoodCheckIn()`/`moodDayStats()`. Today screen shows a live
+      "X% today · N check-ins" line. Mood icon size bumped 40→52.
+      **Not done, on hold**: more mood pose *variety* — owner says more
+      stickers are coming; `tokens.ts`'s `moodPoses` (still just
+      sad/confused/happy/thumbsup/love) was deliberately left alone.
+- [ ] Not run — same no-Node.js caveat as everything else this session.
 
 ## Phase 3 — Habits screen — done (unverified, no Node in this session)
 
@@ -88,6 +103,13 @@ Check items off as they're verified working, not just written — see
       "four or five is plenty" hint + non-blocking nudge text at 5+ habits
 - [x] `client.ts` gained `addHabit()`, plus a matching `createWebStore()`
       branch so the GitHub Pages demo can create habits too
+- [ ] **On hold, owner-blocked (2026-08-17)**: swap each habit's plain
+      emoji (`chipEmoji` in `habits.tsx`, reading `h.emoji`) for a Mochi
+      sticker image instead. Owner explicitly asked to wait until they
+      upload more stickers — the existing 16 poses in `assets/mochi/` are
+      mood/activity poses, not generic per-habit icons, so this needs new
+      assets, not a reuse of what's there. Don't start without checking
+      `assets/mochi/` for new files and confirming with the owner.
 - [ ] **Caveat**: the spec says "target slider" — there's no
       `@react-native-community/slider` dependency installed and adding one
       wasn't allowed this session (owner unreachable), so it's a hand-built

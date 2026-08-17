@@ -32,6 +32,19 @@ export async function migrate(db: SQLiteDatabase): Promise<void> {
       value INTEGER NOT NULL
     );
 
+    -- Every individual mood check-in (multiple per day allowed). moods.value
+    -- above stays the single per-day summary every other screen already
+    -- reads (Mochi's pose, the year-in-pixels grid, Money's insight) — it's
+    -- recomputed as the weighted average of the day's mood_log rows each
+    -- time a new check-in comes in, see addMoodCheckIn() in client.ts.
+    CREATE TABLE IF NOT EXISTS mood_log (
+      id TEXT PRIMARY KEY,
+      date TEXT NOT NULL,
+      value INTEGER NOT NULL,
+      ts INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_mood_log_date ON mood_log(date);
+
     CREATE TABLE IF NOT EXISTS wins (
       date TEXT PRIMARY KEY,
       text TEXT NOT NULL

@@ -77,3 +77,17 @@ export function moodForToday(s: DailyState, opts: { meditating?: boolean; hour?:
 export function stageFromMilestones(milestonesDone: number): 1 | 2 | 3 {
   return Math.min(3, 1 + Math.floor(milestonesDone / 3)) as 1 | 2 | 3;
 }
+
+/**
+ * Rolls a day's individual mood check-ins (1-5, sad..love) into one
+ * weighted percentage and a rounded 1-5 "day value" — each check-in scores
+ * 0/25/50/75/100 along the mood scale, and the day is the average of all of
+ * them. E.g. four "happy"(50) + one "confused"(25) checks = 45%. Returns
+ * null for an empty day so callers can distinguish "no check-ins" from "0%".
+ */
+export function moodDayStats(values: number[]): { percent: number; dayValue: 1 | 2 | 3 | 4 | 5 } | null {
+  if (values.length === 0) return null;
+  const avg = values.reduce((sum, v) => sum + (v - 1) * 25, 0) / values.length;
+  const dayValue = Math.min(5, Math.max(1, Math.round(avg / 25) + 1)) as 1 | 2 | 3 | 4 | 5;
+  return { percent: Math.round(avg), dayValue };
+}

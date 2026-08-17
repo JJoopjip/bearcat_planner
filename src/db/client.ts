@@ -1,6 +1,7 @@
 import { Platform } from "react-native";
 import type { SQLiteDatabase } from "expo-sqlite";
 import { migrate } from "./schema";
+import { moodDayStats } from "@/lib/mood";
 
 // expo-sqlite ~15 (this SDK 52 pin) has no web implementation at all —
 // requireNativeModule("ExpoSQLite") throws the instant the module is
@@ -15,6 +16,7 @@ function createWebStore(): Db {
   const bearcat = { name: "Mochi", berries: 12, scene: null as string | null, owned_scenes: "[]" };
   const intentions = new Map<string, string>();
   const moods = new Map<string, number>();
+  const moodLog: MoodLogRow[] = [];
   const wins = new Map<string, string>();
   const priorities: PriorityRow[] = [];
   const habits: HabitRow[] = [
@@ -74,6 +76,8 @@ function createWebStore(): Db {
       // getAllMoods() has no ORDER BY (callers only ever group/filter it in
       // JS), so no sort needed here to match.
       if (sql.includes("FROM moods")) return Array.from(moods.entries()).map(([date, value]) => ({ date, value })) as unknown as T[];
+      // Real query is "ORDER BY ts" (ascending — oldest check-in first).
+      if (sql.includes("FROM mood_log")) return moodLog.filter((row) => row.date === p[0]).sort((a, b) => a.ts - b.ts) as unknown as T[];
       // Real query is "ORDER BY date DESC", same reasoning as evidence above.
       if (sql.includes("FROM money")) return [...money].sort((a, b) => (b.date > a.date ? 1 : b.date < a.date ? -1 : 0)) as unknown as T[];
       // Real query is "ORDER BY date DESC LIMIT ?" — sort then slice to match.
@@ -100,8 +104,13 @@ function createWebStore(): Db {
         bearcat.owned_scenes = p[1];
         bearcat.scene = p[2];
       } else if (sql.startsWith("UPDATE bearcat SET scene = ?")) bearcat.scene = p[0];
+      else if (sql.startsWith("UPDATE bearcat SET name = ?")) bearcat.name = p[0];
       else if (sql.startsWith("INSERT INTO intentions")) intentions.set(p[0], p[1]);
       else if (sql.startsWith("INSERT INTO moods")) moods.set(p[0], p[1]);
+      else if (sql.startsWith("INSERT INTO mood_log")) {
+        const [id, date, value, ts] = p;
+        moodLog.push({ id, date, value, ts });
+      }
       else if (sql.startsWith("INSERT INTO wins")) wins.set(p[0], p[1]);
       else if (sql.startsWith("INSERT INTO priorities")) priorities.push({ id: p[0], date: p[1], text: p[2], done: 0 });
       else if (sql.startsWith("UPDATE priorities")) {
@@ -205,6 +214,7 @@ export type MilestoneRow = { id: string; quest_id: string; text: string; done: n
 export type EvidenceRow = { id: string; quest_id: string; date: string; text: string };
 export type MoneyRow = { id: string; date: string; amount: number; dir: "in" | "out"; category: string };
 export type MoodRow = { date: string; value: number };
+export type MoodLogRow = { id: string; date: string; value: number; ts: number };
 export type SleepRow = { id: string; date: string; hours: number; quality: "rough" | "okay" | "good" };
 export type NoteRow = { id: string; date: string; text: string };
 export type ReflectionRow = { week_key: string; proud: string; learned: string; next: string };
@@ -219,6 +229,11 @@ export async function getBearcat(): Promise<BearcatRow> {
 export async function addBerries(n: number): Promise<void> {
   const db = await getDb();
   await db.runAsync("UPDATE bearcat SET berries = berries + ? WHERE id = 1", [n]);
+}
+
+export async function setBearcatName(name: string): Promise<void> {
+  const db = await getDb();
+  await db.runAsync("UPDATE bearcat SET name = ? WHERE id = 1", [name]);
 }
 
 export async function getIntention(date: string): Promise<string> {
@@ -247,6 +262,26 @@ export async function setMood(date: string, value: number): Promise<void> {
     "INSERT INTO moods (date, value) VALUES (?, ?) ON CONFLICT(date) DO UPDATE SET value = excluded.value",
     [date, value]
   );
+}
+
+export async function getMoodLog(date: string): Promise<MoodLogRow[]> {
+  const db = await getDb();
+  return db.getAllAsync<MoodLogRow>("SELECT * FROM mood_log WHERE date = ? ORDER BY ts", [date]);
+}
+
+// Logs one check-in (mood can now be recorded as many times a day as the
+// user likes, not just once) and rolls the day's weighted average back into
+// `moods` — the single-value-per-day summary every other screen (Mochi's
+// pose, the year-in-pixels grid, Money's mood-vs-spend insight) already
+// reads, via the same moodDayStats() math the Today screen uses to show the
+// running percentage. Keeps every other consumer of getMood/getAllMoods
+// working unchanged.
+export async function addMoodCheckIn(id: string, date: string, value: number): Promise<void> {
+  const db = await getDb();
+  await db.runAsync("INSERT INTO mood_log (id, date, value, ts) VALUES (?, ?, ?, ?)", [id, date, value, Date.now()]);
+  const entries = await getMoodLog(date);
+  const stats = moodDayStats(entries.map((e) => e.value))!;
+  await setMood(date, stats.dayValue);
 }
 
 export async function getWin(date: string): Promise<string> {
