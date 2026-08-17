@@ -133,6 +133,17 @@ function createWebStore(): Db {
       } else if (sql.startsWith("INSERT INTO quests")) {
         const [id, name] = p;
         quests.push({ id, name, intention: "", pinned: 0, resting: 0, moves: 0 });
+      } else if (sql.startsWith("DELETE FROM quests WHERE id = ?")) {
+        const idx = quests.findIndex((r) => r.id === p[0]);
+        if (idx !== -1) quests.splice(idx, 1);
+      } else if (sql.startsWith("DELETE FROM milestones WHERE quest_id = ?")) {
+        for (let i = milestones.length - 1; i >= 0; i--) {
+          if (milestones[i].quest_id === p[0]) milestones.splice(i, 1);
+        }
+      } else if (sql.startsWith("DELETE FROM evidence WHERE quest_id = ?")) {
+        for (let i = evidence.length - 1; i >= 0; i--) {
+          if (evidence[i].quest_id === p[0]) evidence.splice(i, 1);
+        }
       } else if (sql.startsWith("UPDATE quests SET pinned = 0")) {
         quests.forEach((q) => (q.pinned = 0));
       } else if (sql.startsWith("UPDATE quests SET pinned = 1 WHERE id = ?")) {
@@ -392,6 +403,14 @@ export async function getQuests(): Promise<QuestRow[]> {
 export async function addQuest(id: string, name: string): Promise<void> {
   const db = await getDb();
   await db.runAsync("INSERT INTO quests (id, name, intention, pinned, resting, moves) VALUES (?, ?, '', 0, 0, 0)", [id, name]);
+}
+
+export async function removeQuest(id: string): Promise<void> {
+  const db = await getDb();
+  // No FK cascade in schema.ts, so children are deleted explicitly.
+  await db.runAsync("DELETE FROM evidence WHERE quest_id = ?", [id]);
+  await db.runAsync("DELETE FROM milestones WHERE quest_id = ?", [id]);
+  await db.runAsync("DELETE FROM quests WHERE id = ?", [id]);
 }
 
 export async function pinQuest(id: string): Promise<void> {

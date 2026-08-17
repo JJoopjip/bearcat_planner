@@ -274,7 +274,7 @@ export default function MeScreen() {
         <Card title={`${bearcat?.name ?? "Mochi"}'s corner`} hint={`\u{1F353} ${bearcat?.berries ?? 0}`}>
           <View style={styles.shopcat}>
             <Mochi pose={catMood} stage={stage} scene={(bearcat?.scene as any) ?? null} size={140} />
-            <Text style={styles.hint}>Stage {stage} of 3 — grows with quest milestones, not streaks.</Text>
+            <Text style={styles.hint}>Stage {stage} of 3 — grows with milestones, not streaks.</Text>
           </View>
           <View style={styles.chips}>
             {scenes.map((o) => {

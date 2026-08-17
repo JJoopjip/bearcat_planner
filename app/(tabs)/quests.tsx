@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from "react";
-import { View, Text, TextInput, Pressable, StyleSheet, ScrollView, LayoutChangeEvent } from "react-native";
+import { View, Text, TextInput, Pressable, StyleSheet, ScrollView, LayoutChangeEvent, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
 import { Mochi } from "@/components/Mochi";
@@ -7,7 +7,7 @@ import { colors } from "@/theme/tokens";
 import { dkey, uid } from "@/lib/dates";
 import {
   getQuests, getAllMilestones, getAllEvidence,
-  addQuest, pinQuest, setQuestResting, setQuestIntention, adjustQuestMoves,
+  addQuest, removeQuest, pinQuest, setQuestResting, setQuestIntention, adjustQuestMoves,
   addMilestone, setMilestoneDone, addEvidence, addBerries,
   type QuestRow, type MilestoneRow, type EvidenceRow,
 } from "@/db/client";
@@ -85,6 +85,27 @@ export default function QuestsScreen() {
     setEvidenceDraft((prev) => ({ ...prev, [q.id]: "" }));
   }
 
+  function onRemove(q: QuestRow) {
+    Alert.alert(
+      "Remove this one?",
+      `"${q.name}" and its milestones/evidence will be gone for good.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Remove",
+          style: "destructive",
+          onPress: async () => {
+            await removeQuest(q.id);
+            setQuests((prev) => prev.filter((x) => x.id !== q.id));
+            setMilestones((prev) => prev.filter((m) => m.quest_id !== q.id));
+            setEvidence((prev) => prev.filter((e) => e.quest_id !== q.id));
+            setOpenId((cur) => (cur === q.id ? null : cur));
+          },
+        },
+      ]
+    );
+  }
+
   async function onPin(q: QuestRow) {
     await pinQuest(q.id);
     setQuests((prev) => prev.map((x) => ({ ...x, pinned: x.id === q.id ? 1 : 0 })));
@@ -107,7 +128,7 @@ export default function QuestsScreen() {
       <ScrollView contentContainerStyle={styles.scroll}>
         <View style={styles.pagehead}>
           <View style={styles.pageheadText}>
-            <Text style={styles.h1}>Quests</Text>
+            <Text style={styles.h1}>Becoming</Text>
             <Text style={styles.hint}>The long things. Measured in moves you control, never in outcomes you don't.</Text>
           </View>
           <Mochi pose="thinking" size={78} />
@@ -116,7 +137,7 @@ export default function QuestsScreen() {
         {quests.length === 0 && (
           <View style={styles.card}>
             <Text style={styles.empty}>
-              No quests yet. What's something you're growing toward? Add one below — you can always start small.
+              Nothing here yet. What's something you're growing toward? Add one below — you can always start small.
             </Text>
           </View>
         )}
@@ -215,6 +236,9 @@ export default function QuestsScreen() {
                     <Pressable style={styles.btnGhost} onPress={() => onToggleResting(q)}>
                       <Text style={styles.btnGhostText}>{q.resting ? "Wake it up" : "Let it rest"}</Text>
                     </Pressable>
+                    <Pressable style={styles.btnGhost} onPress={() => onRemove(q)}>
+                      <Text style={styles.btnGhostText}>Remove</Text>
+                    </Pressable>
                   </View>
                 </>
               )}
@@ -223,7 +247,7 @@ export default function QuestsScreen() {
         })}
 
         <View style={styles.card}>
-          <Text style={styles.h2}>Start a quest</Text>
+          <Text style={styles.h2}>Something new to grow into</Text>
           <View style={[styles.addRow, styles.addRowTop]}>
             <TextInput
               style={[styles.input, styles.flex1]}

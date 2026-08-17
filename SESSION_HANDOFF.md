@@ -2,8 +2,7 @@
 
 **Last updated:** 2026-08-17, by a Claude Code session (chat-based, no
 Node.js available in its environment — see "Environment constraints"
-below) that made two small owner-requested changes to the Today screen:
-an editable bearcat name, and multiple-per-day weighted mood check-ins.
+below) that renamed the Quests tab to "Becoming" and added quest deletion.
 Read `CLAUDE.md` first if you haven't; it explains the hygiene rule that
 keeps this file current.
 
@@ -210,6 +209,41 @@ backlog, but in priority order as of this handoff:
   every phase: the actual on-device feel (whether the dashed-underline
   name field reads as "tap to edit" without a label, whether 52px icons
   in a 78px-tall row look right on a real phone).
+
+- **2026-08-17** — Owner feedback on the Quests screen (chat session, no
+  Node.js). Owner didn't want "Quests"/gamified framing — wants something
+  closer to a wish/becoming list. Picked "Becoming" from a few options
+  offered. Also flagged there was no way to delete a quest once created.
+  **Rename**: only user-facing copy changed — tab label (`_layout.tsx`),
+  the screen's `h1` and empty-state text, the "Start a quest" card heading
+  (now "Something new to grow into"), and the Me screen's stage hint
+  (`me.tsx:277`, dropped "quest" from "grows with quest milestones, not
+  streaks"). Deliberately left `quest`/`Quest` as-is in file names, route
+  (`app/(tabs)/quests.tsx`), DB table/column names, and internal
+  function/variable names (`QuestRow`, `getQuests`, `quest_id`, etc.) —
+  renaming those has no user-facing benefit and risks breaking the
+  route or SQLite schema for no reason. If the owner wants the internal
+  naming to match too, that's a bigger, separate pass.
+  **Delete a quest**: added `removeQuest(id)` in `client.ts` — deletes
+  from `evidence` and `milestones` (no FK cascade in `schema.ts`, so both
+  children are deleted explicitly) then `quests`, plus matching
+  `createWebStore()` branches for the three new `DELETE FROM ...` queries
+  (checked for prefix-collisions against existing `INSERT INTO quests`/
+  `UPDATE quests ...` branches — none, since they all start with `DELETE`
+  or a different table name). Wired into `quests.tsx` as a "Remove" ghost
+  button next to "Pin"/"Let it rest" in `questFoot`, behind a native
+  `Alert.alert` confirm (destructive style) naming the quest so it can't
+  be tapped by accident — no "mark done first" requirement, matches what
+  was asked.
+  **Not done**: the two other pieces of owner feedback from this
+  conversation — evidence-vs-milestone framing, and "start a quest" vs.
+  milestone-add-row redundancy — were discussed but no code changes were
+  agreed for either yet.
+  Verified by hand (no Node.js): every new/changed string checked by
+  grep across the four touched files; new `client.ts` DELETE branches
+  checked against `schema.ts`'s `quests`/`milestones`/`evidence` column
+  names. Not verified: on-device feel of the confirm dialog and the new
+  three-button `questFoot` row width on a real phone.
 
 - **2026-08-13** — Built and QA'd Phase 2's remaining piece: the "as it
   happens" quick-log row on Today. New file `src/components/QuickLog.tsx`

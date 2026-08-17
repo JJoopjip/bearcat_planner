@@ -6,7 +6,7 @@ import { colors } from "@/theme/tokens";
 const TAB_ITEMS: { name: string; icon: string; label: string }[] = [
   { name: "index", icon: "\u{1F3E0}", label: "Today" },
   { name: "habits", icon: "\u{1F338}", label: "Habits" },
-  { name: "quests", icon: "\u{1F5FA}️", label: "Quests" },
+  { name: "quests", icon: "\u{1F5FA}️", label: "Becoming" },
   { name: "money", icon: "\u{1FA99}", label: "Money" },
   { name: "me", icon: "\u{1F380}", label: "Me" },
 ];
