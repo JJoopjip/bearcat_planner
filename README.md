@@ -35,6 +35,24 @@ you want to distribute the app beyond your own device (TestFlight, App
 Store, or EAS cloud builds for other testers) — not for trying it yourself
 on your own phone via a cable.
 
+## Running the web build in Docker
+
+No Xcode/Mac and no Node.js locally? You can still preview the web build
+(the same target GitHub Pages deploys) via Docker:
+
+```
+docker compose up --build
+```
+
+Then open http://localhost:8081. Source is bind-mounted into the
+container so edits on the host hot-reload inside it; `node_modules` is
+kept in an anonymous volume so it isn't shadowed by the mount. This is a
+dev-server container, not a production image — it uses the same
+`createWebStore()` in-memory fallback as the GitHub Pages deploy, since
+`expo-sqlite` has no web implementation. There's no Docker path for the
+real iOS app itself — `react-native-health` is a native module, so that
+still needs the Xcode flow below.
+
 ## Project layout
 
 ```

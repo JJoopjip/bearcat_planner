@@ -1,8 +1,10 @@
 # SESSION_HANDOFF.md
 
-**Last updated:** 2026-08-17, by a Claude Code session (chat-based, no
-Node.js available in its environment — see "Environment constraints"
-below) that renamed the Quests tab to "Becoming" and added quest deletion.
+**Last updated:** 2026-08-17, by a Claude Code session that renamed the
+Quests tab to "Becoming", added quest deletion, and added a Docker dev
+container for the web build (this session did have Docker, and used it to
+actually build/run/curl-verify the container — see log below; still no
+Node.js locally, so the app itself remains otherwise unverified on-device).
 Read `CLAUDE.md` first if you haven't; it explains the hygiene rule that
 keeps this file current.
 
@@ -129,6 +131,34 @@ backlog, but in priority order as of this handoff:
    first.
 
 ## Handoff log
+
+- **2026-08-17** — Added a Docker dev container for the web build, per
+  owner request ("dockerize"). Clarified with the owner first: iOS native
+  is out of scope (no Xcode-in-Docker path — `react-native-health` is a
+  native module), so this covers only the web target that GitHub Pages
+  already deploys.
+  New files: `Dockerfile` (node:20-bookworm-slim, `npm install`, `npx expo
+  start --web --port 8081`), `docker-compose.yml` (bind-mounts the repo
+  into `/app` for host-edit hot reload, anonymous volume on
+  `/app/node_modules` so the mount doesn't shadow the image's install,
+  port 8081 published), `.dockerignore`. Documented in a new README
+  section.
+  Unlike every prior entry in this log, **this session actually had
+  Docker available** and used it: `docker compose build` (succeeded, ~950
+  packages installed), `docker compose up -d` (Metro started, bundled the
+  web entry point in ~37s), then `curl http://localhost:8081/` → `200`
+  with the `id="root"` div present in the returned HTML, confirming the
+  container actually serves the app rather than just starting a process.
+  One real bug caught by that verification: the first Dockerfile/compose
+  draft set `CI=1` (to suppress interactive prompts), which turned out to
+  also disable Metro's watch mode ("reloads are disabled") — silently
+  defeating the bind-mount's whole purpose. Removed `CI=1`, kept only
+  `EXPO_NO_TELEMETRY=1`; confirmed working after the fix. Container was
+  torn down (`docker compose down`) after verification, not left running.
+  Not fixed as part of this (pre-existing, unrelated to Docker — same
+  warnings would appear under `expo export -p web`): a
+  `useLayoutEffect`-on-the-server React warning during SSR, visible in the
+  container logs.
 
 - **2026-08-17** — Two owner-requested Today screen changes (chat session,
   no Node.js — same caveat as every prior session, verified by hand/
