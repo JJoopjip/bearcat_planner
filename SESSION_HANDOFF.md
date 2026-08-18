@@ -1,13 +1,17 @@
 # SESSION_HANDOFF.md
 
-**Last updated:** 2026-08-17, by a Claude Code session (chat, no Node.js)
-that spread the new Mochi stickers across Habits, Becoming, Money, and Me —
-mostly empty-state and card-header decoration, all fixed/non-reactive
-poses, nothing tied to performance data. Third change today; see this
-entry's log below plus the two entries above it (habit sticker picker +
-berries card, and Money categories/notes + mood scale) for the full
-same-day picture. Read `CLAUDE.md` first if you haven't; it explains the
-hygiene rule that keeps this file current.
+**Last updated:** 2026-08-17, by a Claude Code session (chat, no Node.js).
+Fourth change today: habits now show Mochi stickers exclusively (no more
+emoji picker), Becoming lost its three non-functional footer buttons (Pin
+to Today / Let it rest / Remove — **quest deletion is no longer reachable
+from the UI**, flagged below and to the owner, since that one button was
+actually real) in favor of an honest "To do" label on the milestone
+checklist, and the Me screen's scene shop now shows an actual color/dot
+preview of each scene instead of a bare text chip. See this entry's log
+below, plus the three entries above it for the rest of today's work (Money
+categories/notes + mood scale, habit sticker picker + berries card, and
+sticker decoration across all four screens). Read `CLAUDE.md` first if you
+haven't; it explains the hygiene rule that keeps this file current.
 
 ## tl;dr for the next agent
 
@@ -132,6 +136,100 @@ backlog, but in priority order as of this handoff:
    first.
 
 ## Handoff log
+
+- **2026-08-17** (fourth change today) — Three more owner-requested
+  changes: Habits switches fully to Mochi stickers, Becoming loses its
+  fake buttons, Me's scene shop gets real previews.
+
+  **Habits: Mochi instead of emoji.** The emoji picker/chip row is gone
+  from `habits.tsx` entirely — every habit now always renders a `Mochi`
+  sticker (`(h.sticker as MochiPose) ?? DEFAULT_STICKER`, default
+  `"happy"`), and the add-habit form shows the sticker grid directly
+  (no more "Or a cuter sticker ›" toggle gating it, since there's no
+  plainer default to fall back to anymore). The `habits.emoji` column is
+  **not** dropped — still `NOT NULL` in the schema, so a fixed
+  `DEFAULT_EMOJI` (🐻, never rendered) is written on every insert purely
+  to satisfy that constraint; not worth a schema migration to drop a
+  column that costs nothing left in place. Updated both seed sources
+  (`schema.ts`'s real seed + `client.ts`'s web-demo seed) to give the four
+  starter habits actual stickers instead of `sticker: null`
+  (Meditate→`sleeping`, Workout→`exercising`, Read→`reading`, Walk
+  outside→`curious`) so first-run habits look intentional, not like a
+  fallback. Removed the now-dead `emojiRow`/`emojiChip`/`emojiChipOn`/
+  `emojiChipText`/`emojiBig`/`stickerToggle` styles.
+
+  **Becoming: honest labels, fake buttons gone.** Added a "To do" eyebrow
+  label above the milestone checklist (same visual treatment as the
+  existing "Intention"/"Evidence" eyebrows) — the owner asked for this
+  plus confirmed "Intention" and "Something new to grow into" as the
+  labels to use, both of which were already exactly that text, so no
+  change needed there.
+  **Removed all three `questFoot` buttons** (Pin to Today / Let it rest /
+  Remove) per the owner's explicit list, which matches the three button
+  labels 1:1. **Flagging clearly**: two of these (Pin, Let it rest) were
+  genuinely inert outside this screen — audited `index.tsx` (Today) before
+  touching anything and confirmed it never reads `quests` or `pinned` at
+  all, so "Pin to Today" never did what its label implied; "Let it rest"
+  only ever toggled a "· resting" suffix on this same screen. Both are
+  fair to call "fake." **"Remove" was not fake** — it was the only way to
+  delete a quest (backed by real `removeQuest()`/confirm dialog). The
+  owner's phrasing ("remove pin to today, let it rest, remove buttons")
+  reads as three button labels to delete, and I've gone with that literal
+  reading since it matches exactly, but this means **quest deletion is no
+  longer reachable from the UI** as of this change. `removeQuest()` itself
+  is untouched in `client.ts` (not dead code removal, just unreachable) —
+  trivial to wire back to a different affordance if this was an
+  unintended loss; flagging to the owner in the chat reply for this
+  session rather than guessing which way to resolve it.
+  Also dropped the 📌 pinned-prefix and "· resting" suffix from the quest
+  header, since nothing can set either anymore — kept them would’ve been
+  a permanently-stuck visual artifact on the one seed quest that starts
+  `pinned: 1`. Removed the now-unused `onPin`/`onToggleResting`/`onRemove`
+  handlers and their imports (`pinQuest`, `setQuestResting`, `removeQuest`,
+  `Alert`) from `quests.tsx`, and the now-dead `questFoot`/`btnGhost`/
+  `btnGhostText` styles. `pinned`/`resting` columns are untouched in
+  `schema.ts` — not worth a migration for a UI-only change, and they cost
+  nothing sitting unused if this functionality returns in a different
+  shape later.
+
+  **Me: scene shop gets real previews.** The owner asked to actually see
+  what Blossom/Garden/Night sky/Cafe corner look like — previously just
+  text chips with a cost, no visual of the actual backdrop at all. Scenes
+  are flat-colour circular backdrops per `CLAUDE.md` (no separate art
+  assets exist to show), so the fix is a preview swatch: each scene in the
+  shop is now a small card with a 48px color circle plus two small accent
+  dots (mirroring the actual "flat colour plus a few small dots" backdrop
+  rendered behind Mochi), the scene's name, a short tagline, and a
+  status line that's cost/"Tap to wear"/"Wearing · tap to take off"
+  depending on state — replacing the flat chip row.
+  **Single-sourced the color data** rather than inventing a second copy:
+  `tokens.ts`'s `scenes` array gained `color`/`dots`/`tagline` fields (same
+  four hex values that were previously hardcoded only inside
+  `Mochi.tsx`'s now-removed `sceneColors` map), and `Mochi.tsx` now derives
+  its own `sceneColors` lookup from that same array
+  (`Object.fromEntries(scenes.map(...))`) instead of maintaining a
+  duplicate. This means the shop preview and the actual backdrop rendered
+  behind Mochi are guaranteed to match — they read the same four hex
+  values, not two hand-copied sets that could drift.
+  `me.tsx`'s `onScenePress` logic (buy/equip/unequip) is completely
+  unchanged — this was a pure display change on top of already-working
+  data functions, not a fix to broken purchase/equip logic (audited it
+  again while writing the "make berries really work" copy in the previous
+  change today; found no bug then, and nothing here touches that path).
+
+  Verified by hand (no Node.js): balanced braces/parens/brackets confirmed
+  programmatically for all six changed files (`habits.tsx`, `quests.tsx`,
+  `me.tsx`, `Mochi.tsx`, `tokens.ts`, `schema.ts`, `client.ts`). Grepped
+  `quests.tsx` for every removed identifier (`onPin`, `onToggleResting`,
+  `onRemove`, `removeQuest`, `pinQuest`, `setQuestResting`, `Alert`,
+  `q.pinned`, `q.resting`) to confirm no dangling references after the
+  cleanup — none found. Grepped `habits.tsx` for `EMOJI_CHOICES`/`emoji` to
+  confirm only the intentional `DEFAULT_EMOJI` storage line remains. Not
+  verified, same standing caveat as every phase: how the new scene-card
+  grid actually wraps/sizes at real phone width (two per row via `width:
+  "47%"`, untested), and whether losing the questFoot row changes the
+  perceived height/rhythm of an open quest card in a way that reads
+  oddly on-device.
 
 - **2026-08-17** (third change today) — Owner asked to "add more stickers
   on Habits, Becoming, Money and Me" as a direct follow-up to the habit

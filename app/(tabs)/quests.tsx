@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from "react";
-import { View, Text, TextInput, Pressable, StyleSheet, ScrollView, LayoutChangeEvent, Alert } from "react-native";
+import { View, Text, TextInput, Pressable, StyleSheet, ScrollView, LayoutChangeEvent } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
 import { Mochi } from "@/components/Mochi";
@@ -7,7 +7,7 @@ import { colors } from "@/theme/tokens";
 import { dkey, uid } from "@/lib/dates";
 import {
   getQuests, getAllMilestones, getAllEvidence,
-  addQuest, removeQuest, pinQuest, setQuestResting, setQuestIntention, adjustQuestMoves,
+  addQuest, setQuestIntention, adjustQuestMoves,
   addMilestone, setMilestoneDone, addEvidence, addBerries,
   type QuestRow, type MilestoneRow, type EvidenceRow,
 } from "@/db/client";
@@ -85,38 +85,6 @@ export default function QuestsScreen() {
     setEvidenceDraft((prev) => ({ ...prev, [q.id]: "" }));
   }
 
-  function onRemove(q: QuestRow) {
-    Alert.alert(
-      "Remove this one?",
-      `"${q.name}" and its milestones/evidence will be gone for good.`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Remove",
-          style: "destructive",
-          onPress: async () => {
-            await removeQuest(q.id);
-            setQuests((prev) => prev.filter((x) => x.id !== q.id));
-            setMilestones((prev) => prev.filter((m) => m.quest_id !== q.id));
-            setEvidence((prev) => prev.filter((e) => e.quest_id !== q.id));
-            setOpenId((cur) => (cur === q.id ? null : cur));
-          },
-        },
-      ]
-    );
-  }
-
-  async function onPin(q: QuestRow) {
-    await pinQuest(q.id);
-    setQuests((prev) => prev.map((x) => ({ ...x, pinned: x.id === q.id ? 1 : 0 })));
-  }
-
-  async function onToggleResting(q: QuestRow) {
-    const next = !q.resting;
-    await setQuestResting(q.id, next);
-    setQuests((prev) => prev.map((x) => (x.id === q.id ? { ...x, resting: next ? 1 : 0 } : x)));
-  }
-
   async function onIntentionBlur(q: QuestRow, text: string) {
     if (text === q.intention) return;
     await setQuestIntention(q.id, text);
@@ -152,10 +120,9 @@ export default function QuestsScreen() {
             <View key={q.id} style={styles.card}>
               <Pressable style={styles.questHead} onPress={() => setOpenId(open ? null : q.id)}>
                 <View style={styles.questHeadText}>
-                  <Text style={styles.h3}>{q.pinned ? "\u{1F4CC} " : ""}{q.name}</Text>
+                  <Text style={styles.h3}>{q.name}</Text>
                   <Text style={styles.hint}>
                     {doneCount}/{qMilestones.length} milestones · {q.moves} moves made
-                    {q.resting ? " · resting" : ""}
                   </Text>
                 </View>
                 <Text style={styles.caret}>{open ? "▾" : "▸"}</Text>
@@ -178,6 +145,7 @@ export default function QuestsScreen() {
                     <Text style={styles.hint}>Present tense. Describe who you are, not what you want.</Text>
                   </View>
 
+                  <Text style={styles.eyebrow}>To do</Text>
                   {qMilestones.map((m) => (
                     <Pressable
                       key={m.id}
@@ -233,17 +201,6 @@ export default function QuestsScreen() {
                     </View>
                   </View>
 
-                  <View style={styles.questFoot}>
-                    <Pressable style={styles.btnGhost} onPress={() => onPin(q)}>
-                      <Text style={styles.btnGhostText}>Pin to Today</Text>
-                    </Pressable>
-                    <Pressable style={styles.btnGhost} onPress={() => onToggleResting(q)}>
-                      <Text style={styles.btnGhostText}>{q.resting ? "Wake it up" : "Let it rest"}</Text>
-                    </Pressable>
-                    <Pressable style={styles.btnGhost} onPress={() => onRemove(q)}>
-                      <Text style={styles.btnGhostText}>Remove</Text>
-                    </Pressable>
-                  </View>
                 </>
               )}
             </View>
@@ -416,11 +373,4 @@ const styles = StyleSheet.create({
   evidenceEmpty: { fontSize: 13, color: colors.inkSoft, fontStyle: "italic" },
   evidenceRow: { fontSize: 13.5, color: colors.ink },
   evidenceDate: { color: colors.inkSoft, fontSize: 11, fontWeight: "700" },
-
-  questFoot: { flexDirection: "row", gap: 8, marginTop: 12 },
-  btnGhost: {
-    flex: 1, borderWidth: 1.5, borderColor: colors.pinkPale, borderRadius: 14, paddingVertical: 11,
-    alignItems: "center", backgroundColor: colors.cream,
-  },
-  btnGhostText: { color: colors.pinkDeep, fontWeight: "700", fontSize: 13.5 },
 });

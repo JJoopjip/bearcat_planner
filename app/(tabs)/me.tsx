@@ -308,14 +308,25 @@ export default function MeScreen() {
             <Mochi pose={catMood} stage={stage} scene={(bearcat?.scene as any) ?? null} size={140} />
             <Text style={styles.hint}>Stage {stage} of 3 — grows with milestones, not streaks.</Text>
           </View>
-          <View style={styles.chips}>
+          <Text style={styles.hint}>Tap a scene to see it, buy it, or wear it.</Text>
+          <View style={styles.sceneGrid}>
             {scenes.map((o) => {
               const isOwned = owned.includes(o.id);
               const isOn = bearcat?.scene === o.id;
               return (
-                <Pressable key={o.id} style={[styles.chip, isOn && styles.chipDone]} onPress={() => onScenePress(o.id, o.cost)}>
-                  <Text style={[styles.chipText, isOn && styles.chipTextOn]}>
-                    {o.name} {isOwned ? "" : `· \u{1F353}${o.cost}`}
+                <Pressable
+                  key={o.id}
+                  style={[styles.sceneCard, isOn && styles.sceneCardOn]}
+                  onPress={() => onScenePress(o.id, o.cost)}
+                >
+                  <View style={[styles.sceneSwatch, { backgroundColor: o.color }]}>
+                    <View style={[styles.sceneDot, { left: "22%", top: "28%", backgroundColor: o.dots[0] }]} />
+                    <View style={[styles.sceneDot, { right: "20%", bottom: "24%", backgroundColor: o.dots[1] }]} />
+                  </View>
+                  <Text style={styles.sceneName}>{o.name}</Text>
+                  <Text style={styles.sceneTagline}>{o.tagline}</Text>
+                  <Text style={styles.scenePrice}>
+                    {isOn ? "Wearing · tap to take off" : isOwned ? "Tap to wear" : `\u{1F353} ${o.cost}`}
                   </Text>
                 </Pressable>
               );
@@ -401,6 +412,18 @@ const styles = StyleSheet.create({
   chipDone: { backgroundColor: colors.pink, borderColor: colors.pinkDeep },
   chipText: { fontSize: 13, fontWeight: "600", color: colors.ink },
   chipTextOn: { color: "#fff" },
+
+  sceneGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 10 },
+  sceneCard: {
+    width: "47%", borderWidth: 1.5, borderColor: colors.pinkPale, backgroundColor: colors.cream,
+    borderRadius: 16, padding: 10, alignItems: "center", gap: 3,
+  },
+  sceneCardOn: { borderColor: colors.pinkDeep, backgroundColor: "#fff" },
+  sceneSwatch: { width: 48, height: 48, borderRadius: 24, marginBottom: 4 },
+  sceneDot: { position: "absolute", width: 7, height: 7, borderRadius: 4 },
+  sceneName: { fontSize: 13.5, fontWeight: "700", color: colors.ink },
+  sceneTagline: { fontSize: 11.5, color: colors.inkSoft, fontStyle: "italic" },
+  scenePrice: { fontSize: 12, fontWeight: "700", color: colors.pinkDeep, marginTop: 2 },
 
   noteRow: { fontSize: 13.5, color: colors.ink, marginBottom: 4 },
   noteDate: { color: colors.inkSoft, fontSize: 11, fontWeight: "700" },

@@ -103,14 +103,16 @@ Check items off as they're verified working, not just written — see
       "four or five is plenty" hint + non-blocking nudge text at 5+ habits
 - [x] `client.ts` gained `addHabit()`, plus a matching `createWebStore()`
       branch so the GitHub Pages demo can create habits too
-- [x] **Habit sticker picker — done 2026-08-17** (later same day than the
-      mood-sticker work above). Rather than a one-time swap of the fixed
-      per-habit emoji, habits can now pick from a curated 25-sticker grid
-      **in-app**, per habit, changeable any time (tap the habit's icon).
-      `habits` table gained a nullable `sticker` column; emoji is still
-      stored and used as the default/fallback. See `SESSION_HANDOFF.md`'s
-      same-day log entry for the full curation rationale (which poses were
-      included/excluded and why).
+- [x] **Habit sticker picker — done 2026-08-17**, then made the sole icon
+      the same day (a follow-up request). Habits pick from a curated
+      25-sticker grid **in-app**, per habit, changeable any time (tap the
+      habit's icon). `habits` table has a nullable `sticker` column;
+      `emoji` is still stored (`NOT NULL` schema constraint) but is
+      **never rendered anymore** — every habit shows a Mochi sticker,
+      falling back to a fixed default pose (`happy`) rather than emoji if
+      somehow unset. See `SESSION_HANDOFF.md`'s same-day log entries (two
+      of them — the picker, then the full emoji removal) for the curation
+      rationale and exactly what changed.
 - [ ] **Caveat**: the spec says "target slider" — there's no
       `@react-native-community/slider` dependency installed and adding one
       wasn't allowed this session (owner unreachable), so it's a hand-built
@@ -129,6 +131,14 @@ Check items off as they're verified working, not just written — see
       has ever been visually confirmed on iOS.
 
 ## Phase 4 — Quests screen — done (unverified, no Node in this session)
+
+> **Superseded 2026-08-17**: the Pin-to-Today / Let it rest footer buttons
+> described below were removed at the owner's request (they were
+> effectively non-functional outside this screen — Today never read
+> `pinned`). **Quest deletion went with them and is currently unreachable
+> from the UI** — see `SESSION_HANDOFF.md`'s same-day log entry, this
+> wasn't confirmed as intentional. The rest of this phase's description
+> (milestone checklist, evidence log, berries) is still accurate.
 
 - [x] `app/(tabs)/quests.tsx` built, replacing the placeholder. Ported
       from `reference/bearcat_planner.jsx`'s `Quests`/`QuestPath`/

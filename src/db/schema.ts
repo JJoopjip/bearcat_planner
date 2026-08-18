@@ -161,14 +161,17 @@ export async function migrate(db: SQLiteDatabase): Promise<void> {
 
   const habitCount = await db.getFirstAsync<{ n: number }>("SELECT COUNT(*) as n FROM habits");
   if (habitCount?.n === 0) {
-    const seedHabits: [string, string, string, number][] = [
-      ["h1", "Meditate", "\u{1F9D8}", 5],
-      ["h2", "Workout", "\u{1F3C3}", 4],
-      ["h3", "Read", "\u{1F4D6}", 4],
-      ["h4", "Walk outside", "\u{1F33F}", 5],
+    const seedHabits: [string, string, string, number, string][] = [
+      ["h1", "Meditate", "\u{1F9D8}", 5, "sleeping"],
+      ["h2", "Workout", "\u{1F3C3}", 4, "exercising"],
+      ["h3", "Read", "\u{1F4D6}", 4, "reading"],
+      ["h4", "Walk outside", "\u{1F33F}", 5, "curious"],
     ];
-    for (const [id, name, emoji, target] of seedHabits) {
-      await db.runAsync("INSERT INTO habits (id, name, emoji, target) VALUES (?, ?, ?, ?)", [id, name, emoji, target]);
+    for (const [id, name, emoji, target, sticker] of seedHabits) {
+      await db.runAsync(
+        "INSERT INTO habits (id, name, emoji, target, sticker) VALUES (?, ?, ?, ?, ?)",
+        [id, name, emoji, target, sticker]
+      );
     }
   }
 

@@ -20,10 +20,10 @@ function createWebStore(): Db {
   const wins = new Map<string, string>();
   const priorities: PriorityRow[] = [];
   const habits: HabitRow[] = [
-    { id: "h1", name: "Meditate", emoji: "\u{1F9D8}", target: 5, sticker: null },
-    { id: "h2", name: "Workout", emoji: "\u{1F3C3}", target: 4, sticker: null },
-    { id: "h3", name: "Read", emoji: "\u{1F4D6}", target: 4, sticker: null },
-    { id: "h4", name: "Walk outside", emoji: "\u{1F33F}", target: 5, sticker: null },
+    { id: "h1", name: "Meditate", emoji: "\u{1F9D8}", target: 5, sticker: "sleeping" },
+    { id: "h2", name: "Workout", emoji: "\u{1F3C3}", target: 4, sticker: "exercising" },
+    { id: "h3", name: "Read", emoji: "\u{1F4D6}", target: 4, sticker: "reading" },
+    { id: "h4", name: "Walk outside", emoji: "\u{1F33F}", target: 5, sticker: "curious" },
   ];
   const habitLog: HabitLogRow[] = [];
   const sessions: { kind: string; minutes: number }[] = [];

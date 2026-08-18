@@ -13,18 +13,20 @@ import {
 
 const today = dkey();
 const DAY_LETTERS = ["M", "T", "W", "T", "F", "S", "S"];
-const EMOJI_CHOICES = ["\u{1F338}", "\u{1F9D8}", "\u{1F3C3}", "\u{1F4D6}", "\u{1F33F}", "\u{1F4A7}", "\u{1F3A7}", "\u{1F9F9}"];
+// Stored in the (still NOT NULL) `emoji` column for any pre-sticker habits
+// and as a DB-layer fallback only — never rendered. Every habit now shows a
+// Mochi sticker instead, per the owner's "use Mochi instead of emoji" ask.
+const DEFAULT_EMOJI = "\u{1F43B}";
+const DEFAULT_STICKER = "happy";
 const WEEKS_BACK = 8;
 
 export default function HabitsScreen() {
   const [habits, setHabits] = useState<HabitRow[]>([]);
   const [habitLog, setHabitLogState] = useState<HabitLogRow[]>([]);
   const [name, setName] = useState("");
-  const [emoji, setEmoji] = useState(EMOJI_CHOICES[0]);
-  const [sticker, setSticker] = useState<string | null>(null);
+  const [sticker, setSticker] = useState<string>(DEFAULT_STICKER);
   const [target, setTarget] = useState(4);
-  // habit id (or "new", for the add-habit form) whose sticker grid is open,
-  // or null if none is
+  // habit id whose sticker grid is open, or null if none is
   const [pickerFor, setPickerFor] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -76,15 +78,14 @@ export default function HabitsScreen() {
     const trimmed = name.trim();
     if (!trimmed) return;
     const id = uid();
-    await addHabit(id, trimmed, emoji, target, sticker);
-    setHabits((prev) => [...prev, { id, name: trimmed, emoji, target, sticker }]);
+    await addHabit(id, trimmed, DEFAULT_EMOJI, target, sticker);
+    setHabits((prev) => [...prev, { id, name: trimmed, emoji: DEFAULT_EMOJI, target, sticker }]);
     setName("");
     setTarget(4);
-    setSticker(null);
-    setPickerFor(null);
+    setSticker(DEFAULT_STICKER);
   }
 
-  async function onPickExistingSticker(habitId: string, next: string | null) {
+  async function onPickExistingSticker(habitId: string, next: string) {
     await setHabitSticker(habitId, next);
     setHabits((prev) => prev.map((h) => (h.id === habitId ? { ...h, sticker: next } : h)));
     setPickerFor(null);
@@ -118,11 +119,7 @@ export default function HabitsScreen() {
             <View key={h.id} style={styles.card}>
               <View style={styles.habitHead}>
                 <Pressable onPress={() => setPickerFor(pickerFor === h.id ? null : h.id)}>
-                  {h.sticker ? (
-                    <Mochi pose={h.sticker as MochiPose} mini size={40} />
-                  ) : (
-                    <Text style={styles.emojiBig}>{h.emoji}</Text>
-                  )}
+                  <Mochi pose={(h.sticker as MochiPose) ?? DEFAULT_STICKER} mini size={40} />
                 </Pressable>
                 <View style={styles.habitMeta}>
                   <Text style={styles.h3}>{h.name}</Text>
@@ -139,12 +136,6 @@ export default function HabitsScreen() {
                 <View style={styles.stickerPanel}>
                   <Text style={styles.hint}>Pick a sticker for this habit</Text>
                   <View style={styles.stickerGrid}>
-                    <Pressable
-                      style={[styles.stickerChip, !h.sticker && styles.stickerChipOn]}
-                      onPress={() => onPickExistingSticker(h.id, null)}
-                    >
-                      <Text style={styles.emojiBig}>{h.emoji}</Text>
-                    </Pressable>
                     {habitStickers.map((s) => (
                       <Pressable
                         key={s}
@@ -191,35 +182,18 @@ export default function HabitsScreen() {
             <Text style={styles.hint}>four or five is plenty</Text>
           </View>
           <View style={styles.cardBody}>
-            <View style={styles.emojiRow}>
-              {EMOJI_CHOICES.map((e) => (
+            <Text style={styles.hint}>Pick a sticker</Text>
+            <View style={styles.stickerGrid}>
+              {habitStickers.map((s) => (
                 <Pressable
-                  key={e}
-                  onPress={() => { setEmoji(e); setSticker(null); }}
-                  style={[styles.emojiChip, emoji === e && !sticker && styles.emojiChipOn]}
+                  key={s}
+                  style={[styles.stickerChip, sticker === s && styles.stickerChipOn]}
+                  onPress={() => setSticker(s)}
                 >
-                  <Text style={styles.emojiChipText}>{e}</Text>
+                  <Mochi pose={s as MochiPose} mini size={34} />
                 </Pressable>
               ))}
             </View>
-            <Pressable onPress={() => setPickerFor(pickerFor === "new" ? null : "new")}>
-              <Text style={styles.stickerToggle}>
-                {sticker ? "Or plain emoji instead ›" : "Or a cuter sticker ›"}
-              </Text>
-            </Pressable>
-            {pickerFor === "new" && (
-              <View style={styles.stickerGrid}>
-                {habitStickers.map((s) => (
-                  <Pressable
-                    key={s}
-                    style={[styles.stickerChip, sticker === s && styles.stickerChipOn]}
-                    onPress={() => setSticker(s)}
-                  >
-                    <Mochi pose={s as MochiPose} mini size={34} />
-                  </Pressable>
-                ))}
-              </View>
-            )}
             <TextInput
               style={styles.input}
               value={name}
@@ -300,9 +274,7 @@ const styles = StyleSheet.create({
   cardHeadTitle: { flexDirection: "row", alignItems: "center", gap: 6 },
   cardBody: { gap: 9 },
   habitHead: { flexDirection: "row", alignItems: "center", gap: 11, marginBottom: 11 },
-  emojiBig: { fontSize: 26 },
   stickerPanel: { marginBottom: 11 },
-  stickerToggle: { fontSize: 12.5, color: colors.pinkDeep, fontWeight: "700", marginTop: 2 },
   stickerGrid: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 8 },
   stickerChip: {
     width: 44, height: 44, borderRadius: 14, backgroundColor: colors.pixel,
@@ -327,13 +299,6 @@ const styles = StyleSheet.create({
     borderWidth: 1.5, borderColor: colors.pinkPale, backgroundColor: colors.cream, borderRadius: 14,
     paddingHorizontal: 13, paddingVertical: 11, fontSize: 15, color: colors.ink,
   },
-  emojiRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  emojiChip: {
-    width: 40, height: 40, borderRadius: 14, backgroundColor: colors.pixel,
-    alignItems: "center", justifyContent: "center",
-  },
-  emojiChipOn: { backgroundColor: colors.pink },
-  emojiChipText: { fontSize: 18 },
   sliderTrack: { height: 10, borderRadius: 99, backgroundColor: colors.pinkPale, marginTop: 6, justifyContent: "center" },
   sliderFill: { position: "absolute", left: 0, top: 0, bottom: 0, borderRadius: 99, backgroundColor: colors.pinkDeep },
   sliderThumb: {

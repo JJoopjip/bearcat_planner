@@ -13,7 +13,7 @@ import Animated, {
 } from "react-native-reanimated";
 import type { MochiPose } from "@/lib/mood";
 import { poseTint, poseMotion } from "@/lib/mood";
-import { colors } from "@/theme/tokens";
+import { colors, scenes } from "@/theme/tokens";
 
 const POSES: Record<MochiPose, ImageSource> = {
   angry: require("../../assets/mochi/mochi-angry.png"),
@@ -50,7 +50,7 @@ const POSES: Record<MochiPose, ImageSource> = {
   waving: require("../../assets/mochi/mochi-waving.png"),
 };
 
-type Scene = "blossom" | "garden" | "night" | "cafe" | null;
+type Scene = (typeof scenes)[number]["id"] | null;
 
 export type MochiProps = {
   pose: MochiPose;
@@ -61,12 +61,11 @@ export type MochiProps = {
   mini?: boolean;
 };
 
-const sceneColors: Record<Exclude<Scene, null>, string> = {
-  blossom: "#FDE4EE",
-  garden: "#E4F2E9",
-  night: "#E5DDF6",
-  cafe: "#FAEBD6",
-};
+// Single source of truth is `scenes` in tokens.ts (also drives the shop
+// preview swatches on the Me screen) — this just indexes into it by id.
+const sceneColors: Record<Exclude<Scene, null>, string> = Object.fromEntries(
+  scenes.map((s) => [s.id, s.color])
+) as Record<Exclude<Scene, null>, string>;
 
 export function Mochi({ pose, size = 150, stage = 1, scene = null, mini = false }: MochiProps) {
   const bob = useSharedValue(0);

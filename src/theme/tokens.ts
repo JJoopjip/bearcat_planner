@@ -42,9 +42,14 @@ export const habitStickers = [
   "mischievous", "playful", "proud", "shy", "surprised", "tired",
 ] as const;
 
+// Scenes are flat-colour circular backdrops behind Mochi (CLAUDE.md: "flat
+// colour plus a few small dots," never art drawn onto the mascot itself).
+// `color`/`dots` are the single source of truth for both the shop preview
+// swatch (Me screen) and the actual backdrop rendered behind Mochi
+// (Mochi.tsx reads this same array — no separate copy to keep in sync).
 export const scenes = [
-  { id: "blossom", name: "Blossom", cost: 30 },
-  { id: "garden", name: "Garden", cost: 60 },
-  { id: "night", name: "Night sky", cost: 120 },
-  { id: "cafe", name: "Cafe corner", cost: 250 },
+  { id: "blossom", name: "Blossom", cost: 30, tagline: "soft pink bloom", color: "#FDE4EE", dots: [colors.pink, colors.pinkDeep] },
+  { id: "garden", name: "Garden", cost: 60, tagline: "leafy and quiet", color: "#E4F2E9", dots: [colors.mint, colors.butter] },
+  { id: "night", name: "Night sky", cost: 120, tagline: "moonlit hush", color: "#E5DDF6", dots: [colors.lilac, "#fff"] },
+  { id: "cafe", name: "Cafe corner", cost: 250, tagline: "warm brew corner", color: "#FAEBD6", dots: [colors.butter, colors.blush] },
 ] as const;
