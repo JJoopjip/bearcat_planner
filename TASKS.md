@@ -85,9 +85,9 @@ Check items off as they're verified working, not just written — see
       the rounded weighted average (0/25/50/75/100 per pose, averaged), via
       new `addMoodCheckIn()`/`moodDayStats()`. Today screen shows a live
       "X% today · N check-ins" line. Mood icon size bumped 40→52.
-      **Not done, on hold**: more mood pose *variety* — owner says more
-      stickers are coming; `tokens.ts`'s `moodPoses` (still just
-      sad/confused/happy/thumbsup/love) was deliberately left alone.
+      **Mood pose variety — done 2026-08-17**: owner uploaded a larger
+      sticker set; `moodPoses` is now `sad/disappointed/bored/happy/excited`
+      (a proper very-sad→very-happy 5-point scale), see `SESSION_HANDOFF.md`.
 - [ ] Not run — same no-Node.js caveat as everything else this session.
 
 ## Phase 3 — Habits screen — done (unverified, no Node in this session)
@@ -103,13 +103,14 @@ Check items off as they're verified working, not just written — see
       "four or five is plenty" hint + non-blocking nudge text at 5+ habits
 - [x] `client.ts` gained `addHabit()`, plus a matching `createWebStore()`
       branch so the GitHub Pages demo can create habits too
-- [ ] **On hold, owner-blocked (2026-08-17)**: swap each habit's plain
-      emoji (`chipEmoji` in `habits.tsx`, reading `h.emoji`) for a Mochi
-      sticker image instead. Owner explicitly asked to wait until they
-      upload more stickers — the existing 16 poses in `assets/mochi/` are
-      mood/activity poses, not generic per-habit icons, so this needs new
-      assets, not a reuse of what's there. Don't start without checking
-      `assets/mochi/` for new files and confirming with the owner.
+- [x] **Habit sticker picker — done 2026-08-17** (later same day than the
+      mood-sticker work above). Rather than a one-time swap of the fixed
+      per-habit emoji, habits can now pick from a curated 25-sticker grid
+      **in-app**, per habit, changeable any time (tap the habit's icon).
+      `habits` table gained a nullable `sticker` column; emoji is still
+      stored and used as the default/fallback. See `SESSION_HANDOFF.md`'s
+      same-day log entry for the full curation rationale (which poses were
+      included/excluded and why).
 - [ ] **Caveat**: the spec says "target slider" — there's no
       `@react-native-community/slider` dependency installed and adding one
       wasn't allowed this session (owner unreachable), so it's a hand-built

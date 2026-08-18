@@ -20,10 +20,10 @@ function createWebStore(): Db {
   const wins = new Map<string, string>();
   const priorities: PriorityRow[] = [];
   const habits: HabitRow[] = [
-    { id: "h1", name: "Meditate", emoji: "\u{1F9D8}", target: 5 },
-    { id: "h2", name: "Workout", emoji: "\u{1F3C3}", target: 4 },
-    { id: "h3", name: "Read", emoji: "\u{1F4D6}", target: 4 },
-    { id: "h4", name: "Walk outside", emoji: "\u{1F33F}", target: 5 },
+    { id: "h1", name: "Meditate", emoji: "\u{1F9D8}", target: 5, sticker: null },
+    { id: "h2", name: "Workout", emoji: "\u{1F3C3}", target: 4, sticker: null },
+    { id: "h3", name: "Read", emoji: "\u{1F4D6}", target: 4, sticker: null },
+    { id: "h4", name: "Walk outside", emoji: "\u{1F33F}", target: 5, sticker: null },
   ];
   const habitLog: HabitLogRow[] = [];
   const sessions: { kind: string; minutes: number }[] = [];
@@ -117,8 +117,11 @@ function createWebStore(): Db {
         const row = priorities.find((r) => r.id === p[1]);
         if (row) row.done = p[0];
       } else if (sql.startsWith("INSERT INTO habits")) {
-        const [id, name, emoji, target] = p;
-        habits.push({ id, name, emoji, target });
+        const [id, name, emoji, target, sticker] = p;
+        habits.push({ id, name, emoji, target, sticker: sticker ?? null });
+      } else if (sql.startsWith("UPDATE habits SET sticker = ? WHERE id = ?")) {
+        const h = habits.find((r) => r.id === p[1]);
+        if (h) h.sticker = p[0];
       } else if (sql.startsWith("DELETE FROM habit_log")) {
         const idx = habitLog.findIndex((r) => r.habit_id === p[0] && r.date === p[1]);
         if (idx !== -1) habitLog.splice(idx, 1);
@@ -168,8 +171,8 @@ function createWebStore(): Db {
         const [id, questId, date, text] = p;
         evidence.push({ id, quest_id: questId, date, text });
       } else if (sql.startsWith("INSERT INTO money")) {
-        const [id, date, amount, dir, category] = p;
-        money.push({ id, date, amount, dir, category });
+        const [id, date, amount, dir, category, note] = p;
+        money.push({ id, date, amount, dir, category, note });
       } else if (sql.startsWith("INSERT INTO sleep_log")) {
         const [id, date, hours, quality] = p;
         sleepLog.push({ id, date, hours, quality });
@@ -217,13 +220,13 @@ export type BearcatRow = {
   owned_scenes: string;
 };
 
-export type HabitRow = { id: string; name: string; emoji: string; target: number };
+export type HabitRow = { id: string; name: string; emoji: string; target: number; sticker: string | null };
 export type HabitLogRow = { habit_id: string; date: string; status: "done" | "cozy" };
 export type PriorityRow = { id: string; date: string; text: string; done: number };
 export type QuestRow = { id: string; name: string; intention: string; pinned: number; resting: number; moves: number };
 export type MilestoneRow = { id: string; quest_id: string; text: string; done: number; sort_order: number };
 export type EvidenceRow = { id: string; quest_id: string; date: string; text: string };
-export type MoneyRow = { id: string; date: string; amount: number; dir: "in" | "out"; category: string };
+export type MoneyRow = { id: string; date: string; amount: number; dir: "in" | "out"; category: string; note: string };
 export type MoodRow = { date: string; value: number };
 export type MoodLogRow = { id: string; date: string; value: number; ts: number };
 export type SleepRow = { id: string; date: string; hours: number; quality: "rough" | "okay" | "good" };
@@ -334,9 +337,17 @@ export async function getHabitLogForRange(startDate: string, endDate: string): P
   return db.getAllAsync<HabitLogRow>("SELECT * FROM habit_log WHERE date >= ? AND date <= ?", [startDate, endDate]);
 }
 
-export async function addHabit(id: string, name: string, emoji: string, target: number): Promise<void> {
+export async function addHabit(id: string, name: string, emoji: string, target: number, sticker: string | null = null): Promise<void> {
   const db = await getDb();
-  await db.runAsync("INSERT INTO habits (id, name, emoji, target) VALUES (?, ?, ?, ?)", [id, name, emoji, target]);
+  await db.runAsync(
+    "INSERT INTO habits (id, name, emoji, target, sticker) VALUES (?, ?, ?, ?, ?)",
+    [id, name, emoji, target, sticker]
+  );
+}
+
+export async function setHabitSticker(id: string, sticker: string | null): Promise<void> {
+  const db = await getDb();
+  await db.runAsync("UPDATE habits SET sticker = ? WHERE id = ?", [sticker, id]);
 }
 
 export async function setHabitLog(habitId: string, date: string, status: "done" | "cozy" | null): Promise<void> {
@@ -467,9 +478,9 @@ export async function getAllMoney(): Promise<MoneyRow[]> {
   return db.getAllAsync<MoneyRow>("SELECT * FROM money ORDER BY date DESC");
 }
 
-export async function addMoney(id: string, date: string, amount: number, dir: "in" | "out", category: string): Promise<void> {
+export async function addMoney(id: string, date: string, amount: number, dir: "in" | "out", category: string, note: string = ""): Promise<void> {
   const db = await getDb();
-  await db.runAsync("INSERT INTO money (id, date, amount, dir, category) VALUES (?, ?, ?, ?, ?)", [id, date, amount, dir, category]);
+  await db.runAsync("INSERT INTO money (id, date, amount, dir, category, note) VALUES (?, ?, ?, ?, ?, ?)", [id, date, amount, dir, category, note]);
 }
 
 // ---- Moods (full range, for the year-in-pixels grid and the money screen's

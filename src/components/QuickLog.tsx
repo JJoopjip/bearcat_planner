@@ -240,6 +240,7 @@ export function MoneySheet({ open, onClose, onLogged }: { open: boolean; onClose
   const [dir, setDir] = useState<"in" | "out">("out");
   const [amount, setAmount] = useState("");
   const [category, setCategory] = useState<string>(spendCategories[0]);
+  const [note, setNote] = useState("");
 
   function onSwitchDir(next: "in" | "out") {
     setDir(next);
@@ -249,9 +250,10 @@ export function MoneySheet({ open, onClose, onLogged }: { open: boolean; onClose
   async function onSave() {
     const n = parseFloat(amount);
     if (!Number.isFinite(n) || n <= 0) return;
-    await addMoney(uid(), dkey(), n, dir, category);
+    await addMoney(uid(), dkey(), n, dir, category, note.trim());
     onLogged();
     setAmount("");
+    setNote("");
     onClose();
   }
 
@@ -280,6 +282,13 @@ export function MoneySheet({ open, onClose, onLogged }: { open: boolean; onClose
           <Chip key={c} label={c} on={category === c} onPress={() => setCategory(c)} />
         ))}
       </View>
+      <TextInput
+        style={styles.input}
+        value={note}
+        onChangeText={setNote}
+        placeholder="Add a note (optional)"
+        placeholderTextColor="#D3A8BE"
+      />
       <Pressable style={styles.btn} onPress={onSave}>
         <Text style={styles.btnText}>Save</Text>
       </Pressable>

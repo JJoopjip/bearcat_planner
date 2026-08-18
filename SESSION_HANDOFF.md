@@ -1,12 +1,14 @@
 # SESSION_HANDOFF.md
 
-**Last updated:** 2026-08-17, by a Claude Code session that renamed the
-Quests tab to "Becoming", added quest deletion, and added a Docker dev
-container for the web build (this session did have Docker, and used it to
-actually build/run/curl-verify the container — see log below; still no
-Node.js locally, so the app itself remains otherwise unverified on-device).
-Read `CLAUDE.md` first if you haven't; it explains the hygiene rule that
-keeps this file current.
+**Last updated:** 2026-08-17, by a Claude Code session (chat, no Node.js)
+that, in a follow-up to this same day's earlier session, unblocked the
+long-on-hold habit-icon item (habits can now pick a sticker from a curated
+grid, in-app, no new dependency), added a "Strawberry points" explainer
+card for the berries economy, and fixed the Me screen's shop-card title to
+use a grammatically-correct possessive of the bearcat's name. See log below
+for full detail, and the entry above it for the same day's Money/mood-
+sticker/Sleep-card work. Read `CLAUDE.md` first if you haven't; it explains
+the hygiene rule that keeps this file current.
 
 ## tl;dr for the next agent
 
@@ -131,6 +133,227 @@ backlog, but in priority order as of this handoff:
    first.
 
 ## Handoff log
+
+- **2026-08-17** (later same day) — Three more owner-requested changes,
+  building directly on the mood-sticker work earlier this same day (see
+  the log entry right below this one).
+
+  **Habit sticker picker — unblocks the item that's been on hold since
+  2026-08-17 morning** (see `TASKS.md`'s Phase 3 section). The owner asked
+  "is it possible to choose my own sticker inside the app" — clarifying the
+  scope here since it matters: this is a **picker over the existing Mochi
+  art**, not custom image upload. Uploading arbitrary photos would conflict
+  with `CLAUDE.md`'s "never draw, generate, recolour, or composite onto
+  these images" rule and is a materially bigger feature (storage, cropping,
+  content moderation for a single-user local app); a picker of curated
+  stickers is what was actually on hold and delivers the same "make it feel
+  like mine" outcome. `habits` table gained a nullable `sticker TEXT`
+  column (`schema.ts`, with the same `PRAGMA table_info` + `ALTER TABLE`
+  backfill pattern used for `money.note` earlier today, since
+  `CREATE TABLE IF NOT EXISTS` doesn't touch existing installs).
+  `HabitRow`/`addHabit()` (`client.ts`) gained a `sticker` field/param
+  (defaults `null` = "use the emoji, like before"), plus a new
+  `setHabitSticker(id, sticker)` for changing an **existing** habit's icon,
+  and matching `createWebStore()` branches for both (checked the new
+  `"UPDATE habits SET sticker = ?..."` prefix against every existing
+  branch — no collision, `habits` had no prior `UPDATE` branch at all).
+  `habits.tsx`: each habit card's icon is now a `Pressable` — tapping it
+  (whether currently emoji or sticker) opens an inline grid of the curated
+  sticker set right under that card; the add-habit form got the same grid
+  behind a "Or a cuter sticker ›" toggle under the existing emoji row, so
+  the default emoji-only flow is unchanged for anyone who ignores the new
+  option. Picking a sticker doesn't delete the habit's `emoji` — it's still
+  stored and is what's shown again if the sticker is cleared via the
+  grid's first "use emoji" chip. Also swapped the Habits header's
+  all-targets-met pose from `thumbsup` to `excited` (new pose, sparkle
+  decorations) for a bit more of the "cute sweet thing" the owner asked
+  for — purely a nicer sticker choice for an already-existing conditional,
+  not a new performance-tied behavior (design rule 5 territory was already
+  crossed, if at all, by the pre-existing `allMet` conditional itself, and
+  that predates this session).
+  **Curated sticker set, not "every pose"**: `tokens.ts`'s new
+  `habitStickers` export is 25 poses — the full original 16 minus
+  angry/sad/scared/confused, plus 13 of the owner's new upload (awestruck,
+  cheeky, confident, curious, determined, giggling, hungry, mischievous,
+  playful, proud, shy, surprised, tired). Deliberately excludes the
+  negative-coded poses (guilty, sick, disgusted, overwhelmed, plus the four
+  original exclusions, plus this morning's disappointed/bored, which are
+  reserved for the mood check-in) — a habit icon sits next to that habit
+  every single day regardless of whether it's done, so a "guilty" or "sick"
+  icon there would read as low-grade judgment in a way the same pose
+  doesn't when it's a one-off self-reported mood check-in. This is my own
+  editorial curation, not something the owner specified pose-by-pose (they
+  said "you find the best stickers" for the mood scale specifically, and
+  I'm extending the same judgment call here) — flagging in case the owner
+  wants a different cut. Copied the 13 new PNGs into `assets/mochi/` (the
+  remaining 4 — guilty/sick/disgusted/overwhelmed — are still only in
+  `~/lifegoal/Mochi/`, not bundled, since nothing in the app uses them yet).
+  Added all 13 to `MochiPose` (`mood.ts`), with `poseTint`/`poseMotion`
+  entries (energetic ones like `giggling`/`playful` get `"hop"`, calmer
+  ones like `shy`/`awestruck`/`surprised` get `"settle"`, `tired` gets
+  `"breathe"` to match `sleeping`) and `Mochi.tsx`'s `POSES` map.
+
+  **"Strawberry points" explainer card.** The owner said the berries system
+  "is very cute and additive to the app" but asked how to earn/spend it —
+  there was genuinely no in-app explanation anywhere before this, only the
+  🍓 count itself and the scene shop it's spent in. Added a new card to
+  `me.tsx`, right above the existing shop card, spelling out every earn
+  amount (matches `reference/claude_code_prompt.md`'s berries table
+  exactly — habit +3, cozy +1, mood check-in +1, small win +3, quest
+  milestone +25, evidence +3, focus/breathing session +5, workout +5) and
+  the one thing to spend them on (scenes, "no way to lose them" — accurate:
+  audited every `addBerries`/berries-deducting call site while writing
+  this copy, `buyScene` is the only place berries are ever subtracted, and
+  it only runs on an explicit purchase tap). Used the owner's own "very
+  cute" framing as license to add three small mini Mochi stickers
+  (`giggling`/`proud`/`awestruck`) as line accents rather than plain bullet
+  points — the kind of "add more sticker where it's suitable" the owner
+  asked for generally, applied to a spot that's textually dry otherwise.
+  Kept the internal term "berries" (already established everywhere in
+  code/DB/copy) rather than renaming to "strawberry points" throughout —
+  used their phrase only for this card's own title, where it reads as a
+  cute alt-name for the same 🍓 count shown elsewhere, not a competing
+  concept.
+
+  **Bearcat-name consistency, checked not just fixed.** The owner asked to
+  make sure every place that mentions the bearcat's name stays in sync when
+  it's renamed on Today. Audited every literal `"Mochi"` string across
+  `app/`/`src/` (`grep -rn "Mochi\\b"`, then manually excluded
+  imports/type-names/comments) — the only place actually displaying the
+  *current* name was already correct: `me.tsx`'s shop-card title already
+  read `${bearcat?.name ?? "Mochi"}'s corner`, sourced from `getBearcat()`
+  on that screen's own `load()`, same as every other screen's independent-
+  load pattern in this codebase, so a rename on Today already does show up
+  on Me on the next visit — no bug existed. The other `"Mochi"` literals
+  are all correct as-is: the placeholder text in Today's name `TextInput`
+  (shown only when the field is empty), the `useState` initial values
+  before `load()` populates them, and the DB's own default-row and
+  schema-comment usages. **One real fix made**: the possessive was always
+  a blind `${name}'s`, which is wrong for a name already ending in "s" (e.g.
+  "Gus's" should be "Gus'"). Added a tiny `possessive()` helper in `me.tsx`
+  and used it for the card title (now "{name}'s corner" / "{name}' corner"
+  as grammar requires) — a real, if minor, correctness fix, not new scope.
+
+  Verified by hand (no Node.js — same caveat as every session): balanced
+  braces/parens/brackets confirmed programmatically for all six changed
+  files (`habits.tsx`, `client.ts`, `schema.ts`, `mood.ts`, `tokens.ts`,
+  `Mochi.tsx`, `me.tsx`). Every new `client.ts` query's columns checked
+  against `schema.ts`'s updated `habits` table. Not verified, same standing
+  caveat as every phase: how the 44-total-pose `Mochi` component (up from
+  16 this morning) actually looks in the habit picker's wrapped grid at
+  real phone width, and whether the inline per-habit sticker panel
+  (expanding a `View` under the card header, not a `Modal`) reads clearly
+  rather than as layout jitter when it opens/closes.
+
+- **2026-08-17** — Three owner-requested changes from a chat session (no
+  Node.js — same caveat as every prior session; verified by hand/
+  programmatic brace-balance check on the eight changed files, not
+  compiled).
+
+  **Money category overhaul + per-entry note.** The owner's request listed
+  spend categories (rent/phone/water/electricity, groceries, food, drink,
+  transportation, entertainment, shopping, travel, other) but asked "what
+  should I call [the bills one]" — picked **"Bills"** (short, standard
+  budgeting term) rather than asking, since it's a one-word label that's
+  trivial to rename later in `tokens.ts` if it doesn't land right.
+  `spendCategories` (`src/theme/tokens.ts`) is now `["Bills", "Groceries",
+  "Food", "Drink", "Transportation", "Entertainment", "Shopping", "Travel",
+  "Other"]`, replacing the old `["Food", "Transit", "Home", "Fun", "Health",
+  "Other"]`. `incomeCategories` collapsed from the two-way
+  `["Shift income", "Other income"]` split to a single `["Income"]`,
+  reading the owner's "category: Income, +++" line as "just have one Income
+  category" rather than a literal feature request (flagging this
+  interpretation here in case it's wrong — cheap to revert, it's one array
+  literal).
+  **Per-entry note**: `money` table gained a `note TEXT NOT NULL DEFAULT
+  ''` column (`src/db/schema.ts`) — since `CREATE TABLE IF NOT EXISTS` is a
+  no-op against a database that already has the table, added an explicit
+  `PRAGMA table_info(money)` check + `ALTER TABLE money ADD COLUMN note...`
+  fallback in `migrate()` so existing installs pick up the column too, not
+  just fresh ones. `MoneyRow`/`addMoney()` (`src/db/client.ts`) gained a
+  `note` field/param (defaults to `""`), with a matching `createWebStore()`
+  branch update. Wired into **both** money-entry surfaces — the Money
+  screen's own form (`app/(tabs)/money.tsx`) and the Today quick-log
+  `MoneySheet` (`src/components/QuickLog.tsx`) — since both call the same
+  `addMoney()` and it would have been inconsistent to only add the field to
+  one. A note with no display surface is useless, so also added a new
+  "Recent" card to `money.tsx` (last 10 entries in the current period,
+  date/category/amount, note shown as a second line when present) — there
+  was previously no per-entry list on this screen at all, only aggregated
+  category bars, so notes would otherwise never be visible anywhere.
+
+  **Five new mood check-in stickers.** The owner uploaded a much larger
+  sticker set to `~/lifegoal/Mochi/` (20 new poses: awestruck, bored,
+  cheeky, confident, curious, determined, disappointed, disgusted, excited,
+  giggling, guilty, hungry, mischievous, overwhelmed, playful, proud, shy,
+  sick, surprised, tired) and asked for the mood check-in row to become a
+  clean 5-point **very sad → sad → neutral → happy → very happy** scale,
+  leaving the actual pose choice to me ("you find the best stickers for
+  each feeling"). Looked at each candidate image directly (`Read` on the
+  PNGs) rather than guessing from filenames alone. Picked:
+  - very sad → `sad` (existing pose, visibly crying — kept, still the most
+    intense negative option available)
+  - sad → `disappointed` (new — droopy/frowning but not crying, a clear
+    step down from `sad`)
+  - neutral → `bored` (new — flat, unimpressed expression; picked over
+    `curious`/`shy`, which read as active/blushing rather than neutral)
+  - happy → `happy` (existing pose, unchanged)
+  - very happy → `excited` (new — same cheering pose family as `happy`,
+    differentiated by added sparkle/star decorations for extra intensity)
+  Only copied the three new PNGs actually used
+  (`mochi-disappointed.png`, `mochi-bored.png`, `mochi-excited.png`) into
+  `assets/mochi/`, not the full 20-pose upload — kept the asset set scoped
+  to what's wired in; the other 17 are still sitting in `~/lifegoal/Mochi/`
+  if a future session wants them for other UI (habit icons are still the
+  explicit on-hold item from earlier sessions, see below — this upload
+  might finally unblock that, worth checking with the owner).
+  Added `bored`/`disappointed`/`excited` to `MochiPose` (`src/lib/mood.ts`),
+  gave each a `poseTint` and `poseMotion` entry (`excited` reuses `happy`'s
+  "idle" family via "hop", matching its more energetic art; `bored` is
+  "none", matching low-energy poses like `icecream`/`angry`), and added the
+  three `require()`s to `Mochi.tsx`'s `POSES` map. Updated
+  `tokens.ts`'s `moodPoses` to `["sad", "disappointed", "bored", "happy",
+  "excited"]` — `moodColors` (the separate low→high color ramp used by the
+  year-in-pixels grid) was left untouched since it's an intensity gradient,
+  not tied to specific poses. `index.tsx`'s mood check-in row maps over
+  `moodPoses` dynamically, so no changes needed there. Fixed one stale
+  comment in `mood.ts` (`moodDayStats`'s doc comment still said
+  "sad..love"/example used "confused").
+
+  **Me screen: Sleep-card overlap with Health.** Asked the owner directly
+  rather than guessing, since deleting a manual data-entry surface is
+  harder to reverse than adding one. Clarified along the way: "Time you've
+  given yourself" (Focus/Breathing minutes) isn't actually Health data at
+  all — Apple Health has no concept of in-app focus/meditation timers, so
+  there was nothing to dedupe there; the real overlap was only the manual
+  Sleep card's hours stat vs. the Health card's automatic "Last night"
+  stat. Owner chose **keep both, relabel** (manual quality tracking —
+  rough/okay/good — that HealthKit can't provide is worth the redundancy,
+  just needed to stop reading as a duplicate). Changed the Sleep card's
+  title from "Sleep" to "Sleep quality", its hint from "manual log, 7-night
+  average" to "Health tracks hours above — this is for how it felt", and
+  its stat label from "7-night avg" to "Your 7-night avg"; relabeled the
+  Health card's own stat from "Last night" to "Last night (auto)" for
+  symmetry. No data-layer changes, no berries changes — copy/label only,
+  in `app/(tabs)/me.tsx`.
+
+  Verified by hand (no Node.js): balanced braces/parens/brackets confirmed
+  programmatically for all eight changed files (`money.tsx`, `me.tsx`,
+  `QuickLog.tsx`, `Mochi.tsx`, `mood.ts`, `tokens.ts`, `schema.ts`,
+  `client.ts`). Grepped for every remaining reference to the old mood pose
+  names (`confused`/`thumbsup`/`love` as check-in stickers specifically,
+  not as `MochiPose` values generally — those two are still valid poses,
+  just no longer part of `moodPoses`, and are still used correctly by
+  `moodForToday`'s own precedence logic in the same file) — none missed.
+  Confirmed `getAllMoney()`'s `SELECT *` needs no code change to pick up
+  the new `note` column. Not verified, same standing caveat as every
+  phase: how the three new sticker PNGs actually look at real check-in-row
+  size (52px, per the prior session's icon-size bump), and whether the
+  `ALTER TABLE ... ADD COLUMN` migration path is correct SQLite syntax
+  when actually run (this project's `expo-sqlite` version wasn't inspected
+  for its bundled SQLite version's `ALTER TABLE` support — modern SQLite
+  supports `ADD COLUMN` fine, but this is exactly the kind of thing "not
+  run" caveats exist for).
 
 - **2026-08-17** — Added a Docker dev container for the web build, per
   owner request ("dockerize"). Clarified with the owner first: iOS native

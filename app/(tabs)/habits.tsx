@@ -3,10 +3,11 @@ import { View, Text, TextInput, Pressable, StyleSheet, ScrollView, PanResponder 
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
 import { Mochi } from "@/components/Mochi";
-import { colors } from "@/theme/tokens";
+import { colors, habitStickers } from "@/theme/tokens";
+import type { MochiPose } from "@/lib/mood";
 import { dkey, addDays, weekDays, uid } from "@/lib/dates";
 import {
-  getHabits, getHabitLogForRange, setHabitLog, addHabit, addBerries,
+  getHabits, getHabitLogForRange, setHabitLog, addHabit, addBerries, setHabitSticker,
   type HabitRow, type HabitLogRow,
 } from "@/db/client";
 
@@ -20,7 +21,11 @@ export default function HabitsScreen() {
   const [habitLog, setHabitLogState] = useState<HabitLogRow[]>([]);
   const [name, setName] = useState("");
   const [emoji, setEmoji] = useState(EMOJI_CHOICES[0]);
+  const [sticker, setSticker] = useState<string | null>(null);
   const [target, setTarget] = useState(4);
+  // habit id (or "new", for the add-habit form) whose sticker grid is open,
+  // or null if none is
+  const [pickerFor, setPickerFor] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const rangeStart = weekDays(addDays(new Date(), -7 * WEEKS_BACK))[0];
@@ -71,10 +76,18 @@ export default function HabitsScreen() {
     const trimmed = name.trim();
     if (!trimmed) return;
     const id = uid();
-    await addHabit(id, trimmed, emoji, target);
-    setHabits((prev) => [...prev, { id, name: trimmed, emoji, target }]);
+    await addHabit(id, trimmed, emoji, target, sticker);
+    setHabits((prev) => [...prev, { id, name: trimmed, emoji, target, sticker }]);
     setName("");
     setTarget(4);
+    setSticker(null);
+    setPickerFor(null);
+  }
+
+  async function onPickExistingSticker(habitId: string, next: string | null) {
+    await setHabitSticker(habitId, next);
+    setHabits((prev) => prev.map((h) => (h.id === habitId ? { ...h, sticker: next } : h)));
+    setPickerFor(null);
   }
 
   return (
@@ -85,7 +98,7 @@ export default function HabitsScreen() {
             <Text style={styles.h1}>Habits</Text>
             <Text style={styles.hint}>Weekly targets, not daily chains. A missed Tuesday is invisible.</Text>
           </View>
-          <Mochi pose={allMet ? "thumbsup" : "playing"} size={78} />
+          <Mochi pose={allMet ? "excited" : "playing"} size={78} />
         </View>
 
         {habits.length === 0 && (
@@ -103,7 +116,13 @@ export default function HabitsScreen() {
           return (
             <View key={h.id} style={styles.card}>
               <View style={styles.habitHead}>
-                <Text style={styles.emojiBig}>{h.emoji}</Text>
+                <Pressable onPress={() => setPickerFor(pickerFor === h.id ? null : h.id)}>
+                  {h.sticker ? (
+                    <Mochi pose={h.sticker as MochiPose} mini size={40} />
+                  ) : (
+                    <Text style={styles.emojiBig}>{h.emoji}</Text>
+                  )}
+                </Pressable>
                 <View style={styles.habitMeta}>
                   <Text style={styles.h3}>{h.name}</Text>
                   <Text style={styles.hint}>
@@ -115,6 +134,28 @@ export default function HabitsScreen() {
                   <Text style={styles.streakLabel}>wk</Text>
                 </View>
               </View>
+              {pickerFor === h.id && (
+                <View style={styles.stickerPanel}>
+                  <Text style={styles.hint}>Pick a sticker for this habit</Text>
+                  <View style={styles.stickerGrid}>
+                    <Pressable
+                      style={[styles.stickerChip, !h.sticker && styles.stickerChipOn]}
+                      onPress={() => onPickExistingSticker(h.id, null)}
+                    >
+                      <Text style={styles.emojiBig}>{h.emoji}</Text>
+                    </Pressable>
+                    {habitStickers.map((s) => (
+                      <Pressable
+                        key={s}
+                        style={[styles.stickerChip, h.sticker === s && styles.stickerChipOn]}
+                        onPress={() => onPickExistingSticker(h.id, s)}
+                      >
+                        <Mochi pose={s as MochiPose} mini size={34} />
+                      </Pressable>
+                    ))}
+                  </View>
+                </View>
+              )}
               <View style={styles.weekGrid}>
                 {week.map((d, i) => {
                   const status = habitLog.find((l) => l.habit_id === h.id && l.date === d)?.status;
@@ -150,13 +191,31 @@ export default function HabitsScreen() {
               {EMOJI_CHOICES.map((e) => (
                 <Pressable
                   key={e}
-                  onPress={() => setEmoji(e)}
-                  style={[styles.emojiChip, emoji === e && styles.emojiChipOn]}
+                  onPress={() => { setEmoji(e); setSticker(null); }}
+                  style={[styles.emojiChip, emoji === e && !sticker && styles.emojiChipOn]}
                 >
                   <Text style={styles.emojiChipText}>{e}</Text>
                 </Pressable>
               ))}
             </View>
+            <Pressable onPress={() => setPickerFor(pickerFor === "new" ? null : "new")}>
+              <Text style={styles.stickerToggle}>
+                {sticker ? "Or plain emoji instead ›" : "Or a cuter sticker ›"}
+              </Text>
+            </Pressable>
+            {pickerFor === "new" && (
+              <View style={styles.stickerGrid}>
+                {habitStickers.map((s) => (
+                  <Pressable
+                    key={s}
+                    style={[styles.stickerChip, sticker === s && styles.stickerChipOn]}
+                    onPress={() => setSticker(s)}
+                  >
+                    <Mochi pose={s as MochiPose} mini size={34} />
+                  </Pressable>
+                ))}
+              </View>
+            )}
             <TextInput
               style={styles.input}
               value={name}
@@ -236,6 +295,14 @@ const styles = StyleSheet.create({
   cardBody: { gap: 9 },
   habitHead: { flexDirection: "row", alignItems: "center", gap: 11, marginBottom: 11 },
   emojiBig: { fontSize: 26 },
+  stickerPanel: { marginBottom: 11 },
+  stickerToggle: { fontSize: 12.5, color: colors.pinkDeep, fontWeight: "700", marginTop: 2 },
+  stickerGrid: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 8 },
+  stickerChip: {
+    width: 44, height: 44, borderRadius: 14, backgroundColor: colors.pixel,
+    alignItems: "center", justifyContent: "center",
+  },
+  stickerChipOn: { backgroundColor: colors.pink },
   habitMeta: { flex: 1, minWidth: 0 },
   streakBadge: { alignItems: "center", backgroundColor: colors.bg, borderRadius: 14, paddingHorizontal: 11, paddingVertical: 6 },
   streakNum: { fontSize: 19, fontWeight: "800", color: colors.pinkDeep, lineHeight: 22 },

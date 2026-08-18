@@ -17,6 +17,8 @@ import {
 const today = dkey();
 const YEAR = new Date().getFullYear();
 
+const possessive = (name: string): string => (name.endsWith("s") ? `${name}'` : `${name}'s`);
+
 export default function MeScreen() {
   const [health, setHealth] = useState<HealthSnapshot | null>(null);
   const [focusMin, setFocusMin] = useState(0);
@@ -190,14 +192,14 @@ export default function MeScreen() {
               <Stat label="Steps today" value={health.steps != null ? health.steps.toLocaleString() : "—"} />
               <Stat label="Heart rate" value={health.heartRateBpm != null ? `${health.heartRateBpm} bpm` : "—"} color={colors.blush} />
               <Stat label="Exercise today" value={health.workoutMinutesToday != null ? `${health.workoutMinutesToday}m` : "—"} color="#5FB595" />
-              <Stat label="Last night" value={health.lastNightSleepHours != null ? `${health.lastNightSleepHours}h` : "—"} color={colors.lilac} />
+              <Stat label="Last night (auto)" value={health.lastNightSleepHours != null ? `${health.lastNightSleepHours}h` : "—"} color={colors.lilac} />
             </View>
           )}
         </Card>
 
-        <Card title="Sleep" hint="manual log, 7-night average">
+        <Card title="Sleep quality" hint="Health tracks hours above — this is for how it felt">
           <View style={styles.statsRow}>
-            <Stat label="7-night avg" value={sleepAvg != null ? `${sleepAvg.toFixed(1)}h` : "—"} color={colors.lilac} />
+            <Stat label="Your 7-night avg" value={sleepAvg != null ? `${sleepAvg.toFixed(1)}h` : "—"} color={colors.lilac} />
           </View>
           <View style={styles.addRow}>
             <TextInput
@@ -271,7 +273,32 @@ export default function MeScreen() {
           ))}
         </Card>
 
-        <Card title={`${bearcat?.name ?? "Mochi"}'s corner`} hint={`\u{1F353} ${bearcat?.berries ?? 0}`}>
+        <Card title="Strawberry points" hint={`\u{1F353} ${bearcat?.berries ?? 0}`}>
+          <View style={styles.berryRow}>
+            <Mochi pose="giggling" mini size={30} />
+            <Text style={styles.berryText}>
+              Earn: a habit done <Text style={styles.bold}>+3</Text> · a cozy day{" "}
+              <Text style={styles.bold}>+1</Text> · checking in on your mood, once a day{" "}
+              <Text style={styles.bold}>+1</Text> · a small win <Text style={styles.bold}>+3</Text>
+            </Text>
+          </View>
+          <View style={styles.berryRow}>
+            <Mochi pose="proud" mini size={30} />
+            <Text style={styles.berryText}>
+              A quest milestone <Text style={styles.bold}>+25</Text> · adding evidence{" "}
+              <Text style={styles.bold}>+3</Text> · a focus or breathing session{" "}
+              <Text style={styles.bold}>+5</Text> · a workout <Text style={styles.bold}>+5</Text>
+            </Text>
+          </View>
+          <View style={styles.berryRow}>
+            <Mochi pose="awestruck" mini size={30} />
+            <Text style={styles.berryText}>
+              Spend them on a backdrop scene for {bearcat?.name ?? "Mochi"} below — nothing else to buy, no way to lose them.
+            </Text>
+          </View>
+        </Card>
+
+        <Card title={`${possessive(bearcat?.name ?? "Mochi")} corner`} hint={`\u{1F353} ${bearcat?.berries ?? 0}`}>
           <View style={styles.shopcat}>
             <Mochi pose={catMood} stage={stage} scene={(bearcat?.scene as any) ?? null} size={140} />
             <Text style={styles.hint}>Stage {stage} of 3 — grows with milestones, not streaks.</Text>
@@ -334,6 +361,9 @@ const styles = StyleSheet.create({
   statLabel: { fontSize: 11, letterSpacing: 1, textTransform: "uppercase", color: colors.inkSoft, fontWeight: "700" },
   statValue: { fontSize: 23, fontWeight: "700", color: colors.ink, marginTop: 3 },
   shopcat: { alignItems: "center", gap: 8, marginBottom: 10 },
+  berryRow: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 8 },
+  berryText: { flex: 1, fontSize: 13, color: colors.ink, lineHeight: 18 },
+  bold: { fontWeight: "700", color: colors.pinkDeep },
 
   pixels: { flexDirection: "row", gap: 2 },
   pixelCol: { flex: 1, gap: 2 },

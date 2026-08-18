@@ -21,6 +21,7 @@ export default function MoneyScreen() {
   const [dir, setDir] = useState<"in" | "out">("out");
   const [amount, setAmount] = useState("");
   const [category, setCategory] = useState<string>(spendCategories[0]);
+  const [note, setNote] = useState("");
 
   const load = useCallback(async () => {
     const [m, mo] = await Promise.all([getAllMoney(), getAllMoods()]);
@@ -62,9 +63,11 @@ export default function MoneyScreen() {
     if (!Number.isFinite(n) || n <= 0) return;
     const id = uid();
     const date = dkey();
-    await addMoney(id, date, n, dir, category);
-    setMoney((prev) => [{ id, date, amount: n, dir, category }, ...prev]);
+    const trimmedNote = note.trim();
+    await addMoney(id, date, n, dir, category, trimmedNote);
+    setMoney((prev) => [{ id, date, amount: n, dir, category, note: trimmedNote }, ...prev]);
     setAmount("");
+    setNote("");
   }
 
   function onSwitchDir(next: "in" | "out") {
@@ -162,9 +165,32 @@ export default function MoneyScreen() {
               </Pressable>
             ))}
           </View>
+          <TextInput
+            style={styles.input}
+            value={note}
+            onChangeText={setNote}
+            placeholder="Add a note (optional)"
+            placeholderTextColor="#D3A8BE"
+          />
           <Pressable style={styles.btn} onPress={onAddMoney}>
             <Text style={styles.btnText}>Add</Text>
           </Pressable>
+        </View>
+
+        <View style={styles.card}>
+          <Text style={styles.h2}>Recent</Text>
+          {rows.length === 0 && <Text style={styles.empty}>Log something above and it appears here.</Text>}
+          {rows.slice(0, 10).map((r) => (
+            <View key={r.id} style={styles.entryRow}>
+              <Text style={styles.entryLine}>
+                <Text style={styles.entryDate}>{r.date}</Text> {r.category}{" "}
+                <Text style={[styles.entryAmount, r.dir === "in" && { color: "#5FB595" }]}>
+                  {r.dir === "in" ? "+" : "-"}${r.amount.toFixed(0)}
+                </Text>
+              </Text>
+              {!!r.note && <Text style={styles.entryNote}>{r.note}</Text>}
+            </View>
+          ))}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -201,6 +227,12 @@ const styles = StyleSheet.create({
 
   insightText: { fontSize: 14, color: colors.ink, lineHeight: 20 },
   bold: { fontWeight: "700" },
+
+  entryRow: { marginBottom: 10 },
+  entryLine: { fontSize: 13.5, color: colors.ink },
+  entryDate: { color: colors.inkSoft, fontSize: 11, fontWeight: "700" },
+  entryAmount: { fontWeight: "700", color: colors.ink },
+  entryNote: { fontSize: 12.5, color: colors.inkSoft, marginTop: 2 },
 
   input: {
     borderWidth: 1.5, borderColor: colors.pinkPale, backgroundColor: colors.cream, borderRadius: 14,

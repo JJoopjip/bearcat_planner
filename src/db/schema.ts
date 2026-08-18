@@ -54,7 +54,8 @@ export async function migrate(db: SQLiteDatabase): Promise<void> {
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
       emoji TEXT NOT NULL,
-      target INTEGER NOT NULL
+      target INTEGER NOT NULL,
+      sticker TEXT
     );
 
     CREATE TABLE IF NOT EXISTS habit_log (
@@ -95,7 +96,8 @@ export async function migrate(db: SQLiteDatabase): Promise<void> {
       date TEXT NOT NULL,
       amount REAL NOT NULL,
       dir TEXT NOT NULL CHECK (dir IN ('in', 'out')),
-      category TEXT NOT NULL
+      category TEXT NOT NULL,
+      note TEXT NOT NULL DEFAULT ''
     );
     CREATE INDEX IF NOT EXISTS idx_money_date ON money(date);
 
@@ -139,6 +141,18 @@ export async function migrate(db: SQLiteDatabase): Promise<void> {
       next TEXT NOT NULL DEFAULT ''
     );
   `);
+
+  // Column added after the initial release — CREATE TABLE IF NOT EXISTS above
+  // is a no-op on a database that already has the `money` table, so existing
+  // installs need this explicit backfill.
+  const moneyCols = await db.getAllAsync<{ name: string }>("PRAGMA table_info(money)");
+  if (!moneyCols.some((c) => c.name === "note")) {
+    await db.execAsync("ALTER TABLE money ADD COLUMN note TEXT NOT NULL DEFAULT ''");
+  }
+  const habitCols = await db.getAllAsync<{ name: string }>("PRAGMA table_info(habits)");
+  if (!habitCols.some((c) => c.name === "sticker")) {
+    await db.execAsync("ALTER TABLE habits ADD COLUMN sticker TEXT");
+  }
 
   const bearcat = await db.getFirstAsync<{ id: number }>("SELECT id FROM bearcat WHERE id = 1");
   if (!bearcat) {

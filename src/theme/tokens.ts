@@ -18,15 +18,29 @@ export const colors = {
   pixel: "#F7E6EE",
 } as const;
 
-// low -> high, self-reported mood check-in
-export const moodPoses = ["sad", "confused", "happy", "thumbsup", "love"] as const;
+// low -> high, self-reported mood check-in: very sad, sad, neutral, happy, very happy
+export const moodPoses = ["sad", "disappointed", "bored", "happy", "excited"] as const;
 export const moodColors = ["#CBD8EC", "#D9CDEA", "#F6E3B8", "#F9C2D6", "#F295B8"] as const;
 
 export const radius = { card: 22, chip: 99 };
 
-export const spendCategories = ["Food", "Transit", "Home", "Fun", "Health", "Other"] as const;
-// Income splits into these two, since income is uneven (spec, "As it happens" money entry).
-export const incomeCategories = ["Shift income", "Other income"] as const;
+export const spendCategories = [
+  "Bills", "Groceries", "Food", "Drink", "Transportation", "Entertainment", "Shopping", "Travel", "Other",
+] as const;
+export const incomeCategories = ["Income"] as const;
+
+// Curated for the habit sticker picker — cute/sweet/upbeat poses only.
+// Deliberately excludes the negative-coded poses (angry, disappointed,
+// bored, sad, scared, confused, guilty, sick, disgusted, overwhelmed) —
+// those exist for honest mood self-report, not as a permanent icon you'd
+// see next to a habit every day (CLAUDE.md rule 5's spirit, even though
+// this isn't literally Mochi's own performance-driven mood).
+export const habitStickers = [
+  "happy", "love", "thumbsup", "waving", "playing", "icecream", "peeking",
+  "exercising", "reading", "sleeping", "drink", "thinking", "awestruck",
+  "cheeky", "confident", "curious", "determined", "giggling", "hungry",
+  "mischievous", "playful", "proud", "shy", "surprised", "tired",
+] as const;
 
 export const scenes = [
   { id: "blossom", name: "Blossom", cost: 30 },
