@@ -1,14 +1,13 @@
 # SESSION_HANDOFF.md
 
 **Last updated:** 2026-08-17, by a Claude Code session (chat, no Node.js)
-that, in a follow-up to this same day's earlier session, unblocked the
-long-on-hold habit-icon item (habits can now pick a sticker from a curated
-grid, in-app, no new dependency), added a "Strawberry points" explainer
-card for the berries economy, and fixed the Me screen's shop-card title to
-use a grammatically-correct possessive of the bearcat's name. See log below
-for full detail, and the entry above it for the same day's Money/mood-
-sticker/Sleep-card work. Read `CLAUDE.md` first if you haven't; it explains
-the hygiene rule that keeps this file current.
+that spread the new Mochi stickers across Habits, Becoming, Money, and Me —
+mostly empty-state and card-header decoration, all fixed/non-reactive
+poses, nothing tied to performance data. Third change today; see this
+entry's log below plus the two entries above it (habit sticker picker +
+berries card, and Money categories/notes + mood scale) for the full
+same-day picture. Read `CLAUDE.md` first if you haven't; it explains the
+hygiene rule that keeps this file current.
 
 ## tl;dr for the next agent
 
@@ -133,6 +132,60 @@ backlog, but in priority order as of this handoff:
    first.
 
 ## Handoff log
+
+- **2026-08-17** (third change today) — Owner asked to "add more stickers
+  on Habits, Becoming, Money and Me" as a direct follow-up to the habit
+  sticker picker + berries card work earlier today. Scope call made here:
+  stuck to **fixed, decorative** placements — empty-state icons and card-
+  header accents — rather than anything reactive to the screen's own data,
+  specifically to avoid brushing up against `CLAUDE.md` rule 5's spirit
+  even on screens (Money, Becoming) where the rule technically only binds
+  Mochi's *own* contextual pose, not incidental decoration. The clearest
+  risk case was Money's "A pattern" mood-vs-spend insight card — added a
+  `thinking` sticker to its header, but it's the same pose regardless of
+  whether the insight reads "worth noticing" or "nicely steady," never
+  swapped based on the numbers.
+  **Habits** (`habits.tsx`): empty-habits state gets a `curious` sticker
+  next to the existing invite copy; "Add a habit" card header gets a small
+  `playful` accent. (The habit-icon picker itself, from earlier today,
+  already covers most of "more stickers on Habits.")
+  **Becoming** (`quests.tsx`): empty-quests state gets `curious`; each
+  quest's empty evidence log ("Proof goes here...") gets `peeking`;
+  "Something new to grow into" add-quest card header gets `determined`.
+  **Money** (`money.tsx`): empty "Where it went" category bars gets
+  `curious`; empty "Recent" entries list gets `peeking`; "A pattern"
+  insight card header gets `thinking` (see the fixed-pose note above).
+  **Me** (`me.tsx`): extended the shared `Card` component with an optional
+  `pose` prop (renders a mini `Mochi` before the title) rather than
+  repeating the ad hoc row-wrapping used on the other three screens, since
+  `me.tsx` already has one `Card` component every card goes through — the
+  more idiomatic fix here, not scope creep. Applied: `awestruck` on "Year
+  in pixels," `curious` on "From Health," `tired` on "Sleep quality,"
+  `determined` on "Time you've given yourself," `giggling` on "Notes"
+  (plus a `peeking` sticker specifically on Notes' own empty state,
+  distinct from the header accent), `proud` on "Sunday reflection." Left
+  "Strawberry points" and the shop "corner" card alone — both already got
+  sticker accents in the immediately-prior change today, adding more would
+  be visual noise on the same card.
+  **Shared pattern across all four files**: every empty-state text that
+  gained an icon needed its `Text` wrapped in a `flexDirection: "row"`
+  container with the icon as a sibling, plus `flex: 1` added to the shared
+  `empty`/`entryNote`-style text style so it still wraps instead of
+  overflowing next to the fixed-width icon — checked each `styles.empty`
+  usage per file first (`grep -n "styles.empty\b"`) to confirm adding
+  `flex: 1` to that shared style wouldn't affect an unrelated usage
+  elsewhere in the same file; all were either single-use or already safe
+  to widen.
+  No data-layer changes, no new dependencies, no new `MochiPose` values —
+  every pose used here (`curious`/`determined`/`peeking`/`thinking`/
+  `tired`/`giggling`/`proud`/`awestruck`/`playful`) already existed from
+  the earlier two changes today.
+  Verified by hand (no Node.js): balanced braces/parens/brackets confirmed
+  programmatically for all four changed screen files. Not verified, same
+  standing caveat as every phase: how the added icons actually look inline
+  with each card's existing header/hint layout at real phone width —
+  particularly `me.tsx`'s `Card` component, since its header row now has
+  three possible children (icon, title, hint) where it only ever had two.
 
 - **2026-08-17** (later same day) — Three more owner-requested changes,
   building directly on the mood-sticker work earlier this same day (see

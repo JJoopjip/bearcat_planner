@@ -102,7 +102,8 @@ export default function HabitsScreen() {
         </View>
 
         {habits.length === 0 && (
-          <View style={styles.card}>
+          <View style={[styles.card, styles.emptyCard]}>
+            <Mochi pose="curious" mini size={40} />
             <Text style={styles.empty}>
               No habits yet. Add one below — small and doable beats big and abandoned.
             </Text>
@@ -183,7 +184,10 @@ export default function HabitsScreen() {
 
         <View style={styles.card}>
           <View style={styles.cardHead}>
-            <Text style={styles.h2}>Add a habit</Text>
+            <View style={styles.cardHeadTitle}>
+              <Mochi pose="playful" mini size={28} />
+              <Text style={styles.h2}>Add a habit</Text>
+            </View>
             <Text style={styles.hint}>four or five is plenty</Text>
           </View>
           <View style={styles.cardBody}>
@@ -289,9 +293,11 @@ const styles = StyleSheet.create({
   h2: { fontSize: 16, fontWeight: "700", color: colors.ink },
   h3: { fontSize: 16, fontWeight: "700", color: colors.ink },
   hint: { fontSize: 12.5, color: colors.inkSoft },
-  empty: { fontSize: 13.5, color: colors.inkSoft, paddingVertical: 6 },
+  empty: { flex: 1, fontSize: 13.5, color: colors.inkSoft, paddingVertical: 6 },
   card: { backgroundColor: colors.card, borderRadius: 22, padding: 15, marginBottom: 12 },
+  emptyCard: { flexDirection: "row", alignItems: "center", gap: 10 },
   cardHead: { flexDirection: "row", justifyContent: "space-between", alignItems: "baseline", marginBottom: 10 },
+  cardHeadTitle: { flexDirection: "row", alignItems: "center", gap: 6 },
   cardBody: { gap: 9 },
   habitHead: { flexDirection: "row", alignItems: "center", gap: 11, marginBottom: 11 },
   emojiBig: { fontSize: 26 },

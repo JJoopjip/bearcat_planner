@@ -117,7 +117,12 @@ export default function MoneyScreen() {
 
         <View style={styles.card}>
           <Text style={styles.h2}>Where it went</Text>
-          {byCat.length === 0 && <Text style={styles.empty}>Log something below and it appears here.</Text>}
+          {byCat.length === 0 && (
+            <View style={styles.emptyRow}>
+              <Mochi pose="curious" mini size={30} />
+              <Text style={styles.empty}>Log something below and it appears here.</Text>
+            </View>
+          )}
           {byCat.map(([cat, v]) => (
             <View key={cat} style={styles.barRow}>
               <Text style={styles.barLabel}>{cat}</Text>
@@ -131,7 +136,10 @@ export default function MoneyScreen() {
 
         {insight.low !== null && insight.high !== null && (
           <View style={styles.card}>
-            <Text style={styles.h2}>A pattern</Text>
+            <View style={styles.cardHeadTitle}>
+              <Mochi pose="thinking" mini size={28} />
+              <Text style={styles.h2}>A pattern</Text>
+            </View>
             <Text style={styles.insightText}>
               On low-mood days you spend about <Text style={styles.bold}>${insight.low.toFixed(0)}</Text>. On good
               days, <Text style={styles.bold}>${insight.high.toFixed(0)}</Text>.
@@ -179,7 +187,12 @@ export default function MoneyScreen() {
 
         <View style={styles.card}>
           <Text style={styles.h2}>Recent</Text>
-          {rows.length === 0 && <Text style={styles.empty}>Log something above and it appears here.</Text>}
+          {rows.length === 0 && (
+            <View style={styles.emptyRow}>
+              <Mochi pose="peeking" mini size={30} />
+              <Text style={styles.empty}>Log something above and it appears here.</Text>
+            </View>
+          )}
           {rows.slice(0, 10).map((r) => (
             <View key={r.id} style={styles.entryRow}>
               <Text style={styles.entryLine}>
@@ -205,7 +218,9 @@ const styles = StyleSheet.create({
   h1: { fontSize: 26, fontWeight: "700", color: colors.ink },
   h2: { fontSize: 16, fontWeight: "700", color: colors.ink, marginBottom: 10 },
   hint: { fontSize: 13.5, color: colors.inkSoft, marginTop: 4 },
-  empty: { fontSize: 13.5, color: colors.inkSoft, paddingVertical: 6 },
+  empty: { flex: 1, fontSize: 13.5, color: colors.inkSoft, paddingVertical: 6 },
+  emptyRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  cardHeadTitle: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 10 },
   card: { backgroundColor: colors.card, borderRadius: 22, padding: 15, marginBottom: 12 },
 
   seg: { flexDirection: "row", backgroundColor: "#FBE9F0", borderRadius: 14, padding: 4, gap: 4, marginBottom: 12 },

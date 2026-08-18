@@ -135,7 +135,8 @@ export default function QuestsScreen() {
         </View>
 
         {quests.length === 0 && (
-          <View style={styles.card}>
+          <View style={[styles.card, styles.emptyCard]}>
+            <Mochi pose="curious" mini size={40} />
             <Text style={styles.empty}>
               Nothing here yet. What's something you're growing toward? Add one below — you can always start small.
             </Text>
@@ -207,7 +208,10 @@ export default function QuestsScreen() {
                   <View style={styles.evidenceBlock}>
                     <Text style={styles.eyebrow}>Evidence</Text>
                     {qEvidence.length === 0 && (
-                      <Text style={styles.evidenceEmpty}>Proof goes here. Start with one line.</Text>
+                      <View style={styles.evidenceEmptyRow}>
+                        <Mochi pose="peeking" mini size={26} />
+                        <Text style={styles.evidenceEmpty}>Proof goes here. Start with one line.</Text>
+                      </View>
                     )}
                     {qEvidence.map((e) => (
                       <Text key={e.id} style={styles.evidenceRow}>
@@ -247,7 +251,10 @@ export default function QuestsScreen() {
         })}
 
         <View style={styles.card}>
-          <Text style={styles.h2}>Something new to grow into</Text>
+          <View style={styles.cardHeadTitle}>
+            <Mochi pose="determined" mini size={28} />
+            <Text style={styles.h2}>Something new to grow into</Text>
+          </View>
           <View style={[styles.addRow, styles.addRowTop]}>
             <TextInput
               style={[styles.input, styles.flex1]}
@@ -358,8 +365,10 @@ const styles = StyleSheet.create({
   h2: { fontSize: 16, fontWeight: "700", color: colors.ink, marginBottom: 10 },
   h3: { fontSize: 16, fontWeight: "700", color: colors.ink },
   hint: { fontSize: 12.5, color: colors.inkSoft },
-  empty: { fontSize: 13.5, color: colors.inkSoft, paddingVertical: 6 },
+  empty: { flex: 1, fontSize: 13.5, color: colors.inkSoft, paddingVertical: 6 },
   card: { backgroundColor: colors.card, borderRadius: 22, padding: 15, marginBottom: 12 },
+  emptyCard: { flexDirection: "row", alignItems: "center", gap: 10 },
+  cardHeadTitle: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 10 },
   questHead: { flexDirection: "row", alignItems: "center", gap: 10, paddingBottom: 4 },
   questHeadText: { flex: 1, minWidth: 0 },
   caret: { color: colors.pinkDeep, fontSize: 14 },
@@ -403,6 +412,7 @@ const styles = StyleSheet.create({
   btnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
 
   evidenceBlock: { marginTop: 12, gap: 7 },
+  evidenceEmptyRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   evidenceEmpty: { fontSize: 13, color: colors.inkSoft, fontStyle: "italic" },
   evidenceRow: { fontSize: 13.5, color: colors.ink },
   evidenceDate: { color: colors.inkSoft, fontSize: 11, fontWeight: "700" },

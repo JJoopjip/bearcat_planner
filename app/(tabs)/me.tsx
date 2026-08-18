@@ -153,7 +153,7 @@ export default function MeScreen() {
           <Text style={styles.sub}>A year of you, at a glance.</Text>
         </View>
 
-        <Card title="Year in pixels" hint="one square, one day">
+        <Card title="Year in pixels" pose="awestruck" hint="one square, one day">
           <View style={styles.pixels}>
             {columns.map((col, ci) => (
               <View key={ci} style={styles.pixelCol}>
@@ -180,7 +180,7 @@ export default function MeScreen() {
           </View>
         </Card>
 
-        <Card title="From Health" hint={Platform.OS === "ios" ? "read-only" : "iOS only"}>
+        <Card title="From Health" pose="curious" hint={Platform.OS === "ios" ? "read-only" : "iOS only"}>
           {!health?.available ? (
             <Text style={styles.empty}>
               {Platform.OS !== "ios"
@@ -197,7 +197,7 @@ export default function MeScreen() {
           )}
         </Card>
 
-        <Card title="Sleep quality" hint="Health tracks hours above — this is for how it felt">
+        <Card title="Sleep quality" pose="tired" hint="Health tracks hours above — this is for how it felt">
           <View style={styles.statsRow}>
             <Stat label="Your 7-night avg" value={sleepAvg != null ? `${sleepAvg.toFixed(1)}h` : "—"} color={colors.lilac} />
           </View>
@@ -223,15 +223,20 @@ export default function MeScreen() {
           </View>
         </Card>
 
-        <Card title="Time you've given yourself">
+        <Card title="Time you've given yourself" pose="determined">
           <View style={styles.statsRow}>
             <Stat label="Focus" value={`${focusMin}m`} />
             <Stat label="Breathing" value={`${meditateMin}m`} color={colors.lilac} />
           </View>
         </Card>
 
-        <Card title="Notes" hint="a running journal">
-          {notes.length === 0 && <Text style={styles.empty}>Nothing here yet. Jot down a thought whenever one shows up.</Text>}
+        <Card title="Notes" pose="giggling" hint="a running journal">
+          {notes.length === 0 && (
+            <View style={styles.emptyRow}>
+              <Mochi pose="peeking" mini size={26} />
+              <Text style={styles.empty}>Nothing here yet. Jot down a thought whenever one shows up.</Text>
+            </View>
+          )}
           {notes.map((n) => (
             <Text key={n.id} style={styles.noteRow}>
               <Text style={styles.noteDate}>{n.date}</Text> {n.text}
@@ -252,7 +257,7 @@ export default function MeScreen() {
           </View>
         </Card>
 
-        <Card title="Sunday reflection" hint="once a week is enough">
+        <Card title="Sunday reflection" pose="proud" hint="once a week is enough">
           {[
             ["proud", "What am I proud of?"],
             ["learned", "What did I learn about myself?"],
@@ -322,11 +327,16 @@ export default function MeScreen() {
   );
 }
 
-function Card({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
+function Card({
+  title, hint, pose, children,
+}: { title: string; hint?: string; pose?: React.ComponentProps<typeof Mochi>["pose"]; children: React.ReactNode }) {
   return (
     <View style={styles.card}>
       <View style={styles.cardHead}>
-        <Text style={styles.h2}>{title}</Text>
+        <View style={styles.cardHeadTitle}>
+          {pose && <Mochi pose={pose} mini size={28} />}
+          <Text style={styles.h2}>{title}</Text>
+        </View>
         {hint && <Text style={styles.hint}>{hint}</Text>}
       </View>
       <View style={styles.cardBody}>{children}</View>
@@ -351,9 +361,11 @@ const styles = StyleSheet.create({
   h2: { fontSize: 16, fontWeight: "700", color: colors.ink },
   sub: { fontSize: 13.5, color: colors.inkSoft, marginTop: 4 },
   hint: { fontSize: 12.5, color: colors.inkSoft },
-  empty: { fontSize: 13.5, color: colors.inkSoft, paddingVertical: 6 },
+  empty: { flex: 1, fontSize: 13.5, color: colors.inkSoft, paddingVertical: 6 },
+  emptyRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   card: { backgroundColor: colors.card, borderRadius: 22, padding: 15, marginBottom: 12 },
   cardHead: { flexDirection: "row", justifyContent: "space-between", alignItems: "baseline", marginBottom: 10 },
+  cardHeadTitle: { flexDirection: "row", alignItems: "center", gap: 6 },
   cardBody: { gap: 9 },
   statsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
   statsRow: { flexDirection: "row", gap: 12 },
