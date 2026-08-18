@@ -8,7 +8,7 @@ import { dkey, uid } from "@/lib/dates";
 import {
   getQuests, getAllMilestones, getAllEvidence,
   addQuest, setQuestIntention, adjustQuestMoves,
-  addMilestone, setMilestoneDone, addEvidence, addBerries,
+  addMilestone, setMilestoneDone, removeMilestone, addEvidence, addBerries,
   type QuestRow, type MilestoneRow, type EvidenceRow,
 } from "@/db/client";
 
@@ -59,6 +59,11 @@ export default function QuestsScreen() {
       setQuests((prev) => prev.map((x) => (x.id === q.id ? { ...x, moves: x.moves + 1 } : x)));
       await addBerries(25);
     }
+  }
+
+  async function onRemoveMilestone(m: MilestoneRow) {
+    await removeMilestone(m.id);
+    setMilestones((prev) => prev.filter((x) => x.id !== m.id));
   }
 
   async function onAddMilestone(q: QuestRow) {
@@ -147,16 +152,17 @@ export default function QuestsScreen() {
 
                   <Text style={styles.eyebrow}>To do</Text>
                   {qMilestones.map((m) => (
-                    <Pressable
-                      key={m.id}
-                      style={[styles.milestoneRow, !!m.done && styles.milestoneRowDone]}
-                      onPress={() => onToggleMilestone(q, m)}
-                    >
-                      <View style={[styles.checkCircle, !!m.done && styles.checkCircleDone]}>
-                        {!!m.done && <Text style={styles.checkMark}>✓</Text>}
-                      </View>
-                      <Text style={[styles.milestoneText, !!m.done && styles.milestoneTextDone]}>{m.text}</Text>
-                    </Pressable>
+                    <View key={m.id} style={[styles.milestoneRow, !!m.done && styles.milestoneRowDone]}>
+                      <Pressable style={styles.milestoneTap} onPress={() => onToggleMilestone(q, m)}>
+                        <View style={[styles.checkCircle, !!m.done && styles.checkCircleDone]}>
+                          {!!m.done && <Text style={styles.checkMark}>✓</Text>}
+                        </View>
+                        <Text style={[styles.milestoneText, !!m.done && styles.milestoneTextDone]}>{m.text}</Text>
+                      </Pressable>
+                      <Pressable hitSlop={8} onPress={() => onRemoveMilestone(m)}>
+                        <Text style={styles.milestoneRemove}>✕</Text>
+                      </Pressable>
+                    </View>
                   ))}
 
                   <View style={styles.addRow}>
@@ -349,11 +355,12 @@ const styles = StyleSheet.create({
   flex1: { flex: 1 },
 
   milestoneRow: {
-    flexDirection: "row", alignItems: "center", gap: 11, backgroundColor: colors.cream,
+    flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: colors.cream,
     borderWidth: 1.5, borderColor: colors.pinkPale, borderRadius: 14, paddingHorizontal: 13, paddingVertical: 12,
     marginBottom: 8,
   },
   milestoneRowDone: { backgroundColor: colors.bg },
+  milestoneTap: { flex: 1, flexDirection: "row", alignItems: "center", gap: 11 },
   checkCircle: {
     width: 21, height: 21, borderRadius: 11, borderWidth: 2, borderColor: colors.pink,
     alignItems: "center", justifyContent: "center",
@@ -362,6 +369,7 @@ const styles = StyleSheet.create({
   checkMark: { color: "#fff", fontSize: 12, fontWeight: "800" },
   milestoneText: { flex: 1, fontSize: 15, color: colors.ink },
   milestoneTextDone: { color: colors.inkSoft, textDecorationLine: "line-through" },
+  milestoneRemove: { fontSize: 15, color: colors.inkSoft, paddingHorizontal: 4 },
 
   addRow: { flexDirection: "row", gap: 8, marginBottom: 4 },
   addRowTop: { marginTop: 2 },

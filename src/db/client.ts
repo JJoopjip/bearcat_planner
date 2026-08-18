@@ -167,6 +167,9 @@ function createWebStore(): Db {
       } else if (sql.startsWith("UPDATE milestones SET done = ? WHERE id = ?")) {
         const m = milestones.find((r) => r.id === p[1]);
         if (m) m.done = p[0];
+      } else if (sql.startsWith("DELETE FROM milestones WHERE id = ?")) {
+        const idx = milestones.findIndex((r) => r.id === p[0]);
+        if (idx !== -1) milestones.splice(idx, 1);
       } else if (sql.startsWith("INSERT INTO evidence")) {
         const [id, questId, date, text] = p;
         evidence.push({ id, quest_id: questId, date, text });
@@ -459,6 +462,11 @@ export async function addMilestone(id: string, questId: string, text: string, so
 export async function setMilestoneDone(id: string, done: boolean): Promise<void> {
   const db = await getDb();
   await db.runAsync("UPDATE milestones SET done = ? WHERE id = ?", [done ? 1 : 0, id]);
+}
+
+export async function removeMilestone(id: string): Promise<void> {
+  const db = await getDb();
+  await db.runAsync("DELETE FROM milestones WHERE id = ?", [id]);
 }
 
 export async function getAllEvidence(): Promise<EvidenceRow[]> {

@@ -1,17 +1,16 @@
 # SESSION_HANDOFF.md
 
 **Last updated:** 2026-08-17, by a Claude Code session (chat, no Node.js).
-Fourth change today: habits now show Mochi stickers exclusively (no more
-emoji picker), Becoming lost its three non-functional footer buttons (Pin
-to Today / Let it rest / Remove — **quest deletion is no longer reachable
-from the UI**, flagged below and to the owner, since that one button was
-actually real) in favor of an honest "To do" label on the milestone
-checklist, and the Me screen's scene shop now shows an actual color/dot
-preview of each scene instead of a bare text chip. See this entry's log
-below, plus the three entries above it for the rest of today's work (Money
-categories/notes + mood scale, habit sticker picker + berries card, and
-sticker decoration across all four screens). Read `CLAUDE.md` first if you
-haven't; it explains the hygiene rule that keeps this file current.
+Fifth change today: each "To do" milestone on the Becoming screen now has
+its own delete control, closing the gap left by the previous change's
+removal of the Pin/Rest/Remove footer row (quest-level deletion is still
+unreachable from the UI, but individual to-do items can now be removed).
+See this entry's log below, plus the four entries above it for the rest of
+today's work (Money categories/notes + mood scale, habit sticker picker +
+berries card, sticker decoration across all four screens, and habits going
+Mochi-only + Becoming losing its footer buttons + Me's scene previews).
+Read `CLAUDE.md` first if you haven't; it explains the hygiene rule that
+keeps this file current.
 
 ## tl;dr for the next agent
 
@@ -136,6 +135,32 @@ backlog, but in priority order as of this handoff:
    first.
 
 ## Handoff log
+
+- **2026-08-17** (fifth change today) — Owner asked two clarifying
+  questions about the just-shipped "To do" milestone list: does a
+  milestone disappear once marked done (no — it stays, struck through,
+  since "moves made" is meant to be a visible record, not a vanishing
+  checklist), and how do you remove one if you want to (there was no way
+  — flagged this honestly rather than guessing at an answer, then built
+  it since it's a real, small gap).
+  Added `removeMilestone(id)` to `client.ts` (`DELETE FROM milestones
+  WHERE id = ?`, plus a matching `createWebStore()` branch — checked
+  against the existing `"DELETE FROM milestones WHERE quest_id = ?"`
+  branch used by the now-unreachable quest-delete cascade; the two prefixes
+  diverge immediately after `WHERE `, `id` vs `quest_id`, so no collision).
+  `quests.tsx`: each milestone row is now a `View` wrapping two
+  `Pressable`s instead of being one big `Pressable` — the existing
+  tap-to-toggle-done area (`milestoneTap`, unchanged behavior) plus a new
+  small "✕" (`onRemoveMilestone`) alongside it. Deletion is immediate, no
+  confirm dialog — same "no confirmation, no warning styling" precedent
+  the Inbox quick-log rows already established for a single, low-stakes
+  line item (unlike whole-quest deletion, which had a confirm dialog
+  before it was removed). Deleting a milestone does **not** claw back
+  berries or decrement `moves` — matches the existing "moves only ever
+  increase, the effort already happened" rule that already governs
+  unchecking a milestone.
+  Verified by hand (no Node.js): balanced braces/parens/brackets confirmed
+  programmatically for both changed files (`quests.tsx`, `client.ts`).
 
 - **2026-08-17** (fourth change today) — Three more owner-requested
   changes: Habits switches fully to Mochi stickers, Becoming loses its
