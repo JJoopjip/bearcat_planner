@@ -66,6 +66,21 @@ export type MochiProps = {
 const sceneColors: Record<Exclude<Scene, null>, string> = Object.fromEntries(
   scenes.map((s) => [s.id, s.color])
 ) as Record<Exclude<Scene, null>, string>;
+const sceneDots: Record<Exclude<Scene, null>, readonly string[]> = Object.fromEntries(
+  scenes.map((s) => [s.id, s.dots])
+) as Record<Exclude<Scene, null>, readonly string[]>;
+
+// Scattered positions for the "few small dots" that give a scene some life
+// beyond a flat colour fill — still flat shapes, still nothing drawn onto
+// Mochi. Sizes/positions are fixed per slot so a scene reads as a gentle
+// pattern rather than noise.
+const SCENE_DOT_LAYOUT = [
+  { left: "12%", top: "18%", size: 10 },
+  { right: "10%", top: "30%", size: 6 },
+  { left: "20%", bottom: "14%", size: 7 },
+  { right: "16%", bottom: "22%", size: 11 },
+  { left: "50%", top: "6%", size: 6 },
+] as const;
 
 export function Mochi({ pose, size = 150, stage = 1, scene = null, mini = false }: MochiProps) {
   const bob = useSharedValue(0);
@@ -164,7 +179,24 @@ export function Mochi({ pose, size = 150, stage = 1, scene = null, mini = false 
 
   return (
     <View style={[styles.wrap, dim]}>
-      {scene && <View style={[styles.scene, { backgroundColor: sceneColors[scene] }]} />}
+      {scene && (
+        <View style={[styles.scene, { backgroundColor: sceneColors[scene] }]} pointerEvents="none">
+          {SCENE_DOT_LAYOUT.map((spot, i) => {
+            const { size, ...position } = spot;
+            const color = sceneDots[scene][i % sceneDots[scene].length];
+            return (
+              <View
+                key={i}
+                style={[
+                  styles.sceneDot,
+                  position,
+                  { width: size, height: size, borderRadius: size / 2, backgroundColor: color },
+                ]}
+              />
+            );
+          })}
+        </View>
+      )}
       <View style={[styles.glow, { backgroundColor: poseTint[pose] }]} />
       {!mini && stage >= 2 && <View style={styles.halo} />}
       <Animated.View style={[dim, animatedStyle]}>
@@ -211,6 +243,8 @@ const styles = StyleSheet.create({
     width: "118%",
     aspectRatio: 1,
     borderRadius: 999,
+    overflow: "hidden",
   },
+  sceneDot: { position: "absolute", opacity: 0.85 },
   orbitDot: { position: "absolute", width: 7, height: 7, borderRadius: 4 },
 });

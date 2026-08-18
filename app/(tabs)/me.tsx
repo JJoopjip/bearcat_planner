@@ -10,7 +10,7 @@ import { getHealthSnapshot, type HealthSnapshot } from "@/lib/health";
 import {
   getBearcat, getMinutesByKind, getMood, getWin, getPriorities, getHabits, getHabitLogForRange,
   getAllMoods, getAllMilestones, getRecentSleep, addSleep, getNotes, addNote,
-  getReflection, setReflection, buyScene, setScene,
+  getReflection, setReflection, buyScene, setScene, addBerries,
   type BearcatRow, type MoodRow, type MilestoneRow, type SleepRow, type NoteRow, type ReflectionRow,
 } from "@/db/client";
 
@@ -143,6 +143,15 @@ export default function MeScreen() {
       const ok = await buyScene(id, cost);
       if (ok) setBearcat({ ...bearcat, berries: bearcat.berries - cost, owned_scenes: JSON.stringify([...owned, id]), scene: id });
     }
+  }
+
+  // Dev-only: lets you self-serve enough berries to preview every scene
+  // without waiting on real habit/focus/workout earn rates. Never shown in
+  // a release build — __DEV__ is stripped by the bundler.
+  async function onDevAddBerries() {
+    if (!bearcat) return;
+    await addBerries(300);
+    setBearcat({ ...bearcat, berries: bearcat.berries + 300 });
   }
 
   return (
@@ -309,6 +318,11 @@ export default function MeScreen() {
             <Text style={styles.hint}>Stage {stage} of 3 — grows with milestones, not streaks.</Text>
           </View>
           <Text style={styles.hint}>Tap a scene to see it, buy it, or wear it.</Text>
+          {__DEV__ && (
+            <Pressable style={styles.devBerryBtn} onPress={onDevAddBerries}>
+              <Text style={styles.devBerryBtnText}>Dev: +300 \u{1F353} (test scenes)</Text>
+            </Pressable>
+          )}
           <View style={styles.sceneGrid}>
             {scenes.map((o) => {
               const isOwned = owned.includes(o.id);
@@ -413,6 +427,17 @@ const styles = StyleSheet.create({
   chipText: { fontSize: 13, fontWeight: "600", color: colors.ink },
   chipTextOn: { color: "#fff" },
 
+  devBerryBtn: {
+    alignSelf: "flex-start",
+    marginTop: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 99,
+    borderWidth: 1,
+    borderColor: colors.inkSoft,
+    borderStyle: "dashed",
+  },
+  devBerryBtnText: { fontSize: 12, fontWeight: "700", color: colors.inkSoft },
   sceneGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 10 },
   sceneCard: {
     width: "47%", borderWidth: 1.5, borderColor: colors.pinkPale, backgroundColor: colors.cream,

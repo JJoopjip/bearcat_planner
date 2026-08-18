@@ -136,6 +136,32 @@ backlog, but in priority order as of this handoff:
 
 ## Handoff log
 
+- **2026-08-18** — Owner said scenes felt like "just changing background
+  color" and asked to see them look more interesting, plus wanted enough
+  berries to actually buy and preview them. Two changes:
+  1. `Mochi.tsx`: the live scene backdrop behind Mochi was rendering
+     **only** `scenes[].color` as a flat circle — the `dots` field from
+     `tokens.ts` was already being read for the Me-screen shop swatch
+     preview but was never applied to the actual backdrop shown behind
+     Mochi, which is the real bug behind the complaint. Added a
+     `SCENE_DOT_LAYOUT` (5 fixed positions/sizes) and now render each
+     scene's `dots` colors scattered behind Mochi, cycling through the
+     2-color `dots` array. Still flat colour + a few small dots per the
+     locked spec (`reference/claude_code_prompt.md` line 122) — nothing
+     drawn onto the mascot artwork itself, no new dependency.
+  2. `me.tsx`: added a `__DEV__`-gated "Dev: +300 🍓" button in the
+     "[name]'s corner" card, calling the existing `addBerries()` (already
+     used by workout/focus logging) rather than touching the real seed
+     default (`schema.ts`'s `berries INTEGER NOT NULL DEFAULT 12`) or the
+     spec's earn rates — this is a manual test affordance only, stripped
+     from release builds by the bundler, not a change to game economy.
+  Verified by hand (no Node.js, confirmed via `which node/npm/npx`):
+  balanced braces/parens/brackets checked programmatically for
+  `Mochi.tsx`, `me.tsx`, `tokens.ts`. **Not** run on-device — same
+  standing caveat as every prior no-Node session; owner should sanity
+  check the dot layout doesn't clip oddly at `size=140` (Me screen) vs.
+  larger sizes elsewhere before trusting it fully.
+
 - **2026-08-17** (fifth change today) — Owner asked two clarifying
   questions about the just-shipped "To do" milestone list: does a
   milestone disappear once marked done (no — it stays, struck through,
